@@ -1,0 +1,53 @@
+89 49 56 47   IconVG Magic identifier
+00            Number of metadata chunks: 0
+c0            Start path, filled with CREG[CSEL-0]; M (absolute moveTo)
+48                -28
+58                -20
+e8            V (absolute vertical lineTo)
+48                -28
+e6            H (absolute horizontal lineTo)
+58                -20
+e1            z (closePath); end path
+c7            Set LOD
+00                +0
+a0                +80
+c0            Start path, filled with CREG[CSEL-0]; M (absolute moveTo)
+b8                +28
+80                +0
+01            L (absolute lineTo), 2 reps
+64                -14
+41 98             +24.25
+              L (absolute lineTo), implicit
+64                -14
+c1 67             -24.25
+e1            z (closePath); end path
+c7            Set LOD
+a0                +80
+03 00 80 7f       +Inf
+c0            Start path, filled with CREG[CSEL-0]; M (absolute moveTo)
+b8                +28
+80                +0
+03            L (absolute lineTo), 4 reps
+a9 88             +8.65625
+a1 9a             +26.625
+              L (absolute lineTo), implicit
+59 69             -22.65625
+75 90             +16.453125
+              L (absolute lineTo), implicit
+59 69             -22.65625
+8d 6f             -16.453125
+              L (absolute lineTo), implicit
+a9 88             +8.65625
+61 65             -26.625
+e1            z (closePath); end path
+c7            Set LOD
+00                +0
+03 00 80 7f       +Inf
+c0            Start path, filled with CREG[CSEL-0]; M (absolute moveTo)
+b8                +28
+a8                +20
+e8            V (absolute vertical lineTo)
+b8                +28
+e6            H (absolute horizontal lineTo)
+a8                +20
+e1            z (closePath); end path
