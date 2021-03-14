@@ -39,6 +39,14 @@ not expected to be perceptible to the naked eye.
 The [test/data](./test/data) directory holds these files and other examples.
 
 
+## File Format
+
+- [IconVG Specification](spec/iconvg-spec.md)
+- Magic number: `0x89 0x49 0x56 0x47`, which is `"\x89IVG"`.
+- Suggested file extension: `.ivg`
+- Suggested MIME type: `image/ivg`
+
+
 ## Implementations
 
 The [original Go IconVG
@@ -46,7 +54,7 @@ package](https://pkg.go.dev/golang.org/x/exp/shiny/iconvg) implements a decoder
 and encoder.
 
 
-# Disclaimer
+## Disclaimer
 
 This is not an official Google product, it is just code that happens to be
 owned by Google.
