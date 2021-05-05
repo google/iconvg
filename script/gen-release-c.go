@@ -54,6 +54,8 @@ func main1() error {
 			buf.Write(line)
 		} else if err := expand(buf, line); err != nil {
 			return err
+		} else {
+			buf.WriteByte('\n')
 		}
 	}
 

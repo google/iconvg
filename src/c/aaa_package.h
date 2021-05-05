@@ -51,9 +51,11 @@
 #define ICONVG_VERSION_STRING "0.0.0+0.00000000"
 
 #include "./aaa_public.h"
-
 #ifdef ICONVG_IMPLEMENTATION
-// TODO.
+#include "./aaa_private.h"
+#include "./decoder.c"
+#include "./errors.c"
+#include "./rectangle.c"
 #endif  // ICONVG_IMPLEMENTATION
 
 #endif  // ICONVG_INCLUDE_GUARD
