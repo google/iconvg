@@ -1,0 +1,4 @@
+This placeholder file indicates the root of the IconVG repository.
+
+For example, filenames like "test/data/cowbell.ivg" are relative to this root
+directory.
