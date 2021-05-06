@@ -26,44 +26,63 @@
 
 // ---------------- Version
 
-// ICONVG_VERSION is the major.minor.patch version, as per https://semver.org/,
-// as a uint64_t. The major number is the high 32 bits. The minor number is the
+// This section deals with library versions (also known as API versions), which
+// are different from file format versions. For example, library versions 3.0.1
+// and 4.2.0 could have incompatible API but still speak the same file format.
+
+// ICONVG_LIBRARY_VERSION is major.minor.patch, as per https://semver.org/, as
+// a uint64_t. The major number is the high 32 bits. The minor number is the
 // middle 16 bits. The patch number is the low 16 bits. The pre-release label
 // and build metadata are part of the string representation (such as
 // "1.2.3-beta+456.20181231") but not the uint64_t representation.
 //
-// ICONVG_VERSION_PRE_RELEASE_LABEL (such as "", "beta" or "rc.1") being
-// non-empty denotes a developer preview, not a release version, and has no
-// backwards or forwards compatibility guarantees.
+// ICONVG_LIBRARY_VERSION_PRE_RELEASE_LABEL (such as "", "beta" or "rc.1")
+// being non-empty denotes a developer preview, not a release version, and has
+// no backwards or forwards compatibility guarantees.
 //
-// ICONVG_VERSION_BUILD_METADATA_XXX, if non-zero, are the number of commits
-// and the last commit date in the repository used to build this library. In
-// each major.minor branch, the commit count should increase monotonically.
+// ICONVG_LIBRARY_VERSION_BUILD_METADATA_XXX, if non-zero, are the number of
+// commits and the last commit date in the repository used to build this
+// library. Within each major.minor branch, the commit count should increase
+// monotonically.
 //
-// Some code generation programs can override ICONVG_VERSION.
-#define ICONVG_VERSION 0
-#define ICONVG_VERSION_MAJOR 0
-#define ICONVG_VERSION_MINOR 0
-#define ICONVG_VERSION_PATCH 0
-#define ICONVG_VERSION_PRE_RELEASE_LABEL "unsupported.snapshot"
-#define ICONVG_VERSION_BUILD_METADATA_COMMIT_COUNT 0
-#define ICONVG_VERSION_BUILD_METADATA_COMMIT_DATE 0
-#define ICONVG_VERSION_STRING "0.0.0+0.00000000"
+// Some code generation programs can override ICONVG_LIBRARY_VERSION.
+#define ICONVG_LIBRARY_VERSION 0
+#define ICONVG_LIBRARY_VERSION_MAJOR 0
+#define ICONVG_LIBRARY_VERSION_MINOR 0
+#define ICONVG_LIBRARY_VERSION_PATCH 0
+#define ICONVG_LIBRARY_VERSION_PRE_RELEASE_LABEL "unsupported.snapshot"
+#define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_COUNT 0
+#define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_DATE 0
+#define ICONVG_LIBRARY_VERSION_STRING "0.0.0+0.00000000"
 
 // -------------------------------- #include "./aaa_public.h"
 
 #include <stdint.h>
 #include <string.h>
 
+// ----
+
 // Functions that return a "const char*" typically use that to denote success
 // (returning NULL) or failure (returning non-NULL). On failure, that C string
 // is a human-readable but non-localized error message. It can also be compared
 // (by the == operator, not just by strcmp) to an iconvg_error_etc constant.
+//
+// bad_etc indicates a file format error. The source bytes are not IconVG.
+//
+// Other errors (invalid_etc, null_etc, unsupported_etc) are typically
+// programming errors instead of file format errors.
 
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_null_argument[];
+extern const char iconvg_error_null_vtable[];
+extern const char iconvg_error_unsupported_vtable[];
+
+bool  //
+iconvg_error_is_file_format_error(const char* err_msg);
+
+// ----
 
 // iconvg_rectangle is an axis-aligned rectangle with float32 co-ordinates.
 //
@@ -78,9 +97,80 @@ typedef struct iconvg_rectangle_struct {
   float max_y;
 } iconvg_rectangle;
 
+// ----
+
+// iconvg_canvas is conceptually a 'virtual super-class' with e.g. Cairo-backed
+// or Skia-backed 'sub-classes'.
+//
+// This is like C++'s class mechanism, simplified (no multiple inheritance, all
+// 'sub-classes' have the same sizeof), but implemented by explicit code
+// instead of by the language. This library is implemented in C, not C++.
+//
+// Most users won't need to know about the details of the iconvg_canvas and
+// iconvg_canvas_vtable types. Only that iconvg_make_etc_canvas creates a
+// canvas and the iconvg_canvas__etc methods take a canvas as an argument.
+
+struct iconvg_canvas__struct;
+
+typedef struct iconvg_canvas_vtable__struct {
+  size_t sizeof__iconvg_canvas_vtable;
+  const char* (*begin_decode)(struct iconvg_canvas__struct*);
+  const char* (*end_decode)(struct iconvg_canvas__struct*, const char* err_msg);
+} iconvg_canvas_vtable;
+
+typedef struct iconvg_canvas__struct {
+  // vtable defines what 'sub-class' we have.
+  const iconvg_canvas_vtable* vtable;
+
+  // context_etc semantics depend on the 'sub-class' and should be considered
+  // private implementation details. For built-in 'sub-classes', as returned by
+  // the library's iconvg_make_etc_canvas functions, users should not read or
+  // write these fields directly and their semantics may change between minor
+  // library releases.
+  void* context_nonconst_ptr0;
+  void* context_nonconst_ptr1;
+  const void* context_const_ptr;
+  size_t context_extra;
+} iconvg_canvas;
+
+// ----
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// iconvg_make_debug_canvas returns an iconvg_canvas that logs vtable calls to
+// f before forwarding the call on to the wrapped iconvg_canvas. Log messages
+// are prefixed by message_prefix.
+//
+// f may be NULL, in which case nothing is logged.
+//
+// message_prefix may be NULL, equivalent to an empty prefix.
+//
+// wrapped may be NULL, in which case the iconvg_canvas calls always return
+// success (a NULL error message) except that end_decode returns its (possibly
+// non-NULL) err_msg argument. If wrapped is non-NULL then the caller of this
+// function is responsible for ensuring that wrapped remains a valid pointer
+// while the returned iconvg_canvas is in use.
+iconvg_canvas  //
+iconvg_make_debug_canvas(FILE* f,
+                         const char* message_prefix,
+                         iconvg_canvas* wrapped);
+
+// iconvg_canvas__decode decodes the src IconVG-formatted data, calling self's
+// callbacks (vtable functions) to paint the decoded vector graphic.
+//
+// The call sequence always begins with exactly one begin_decode call and ends
+// with exactly one end_decode call. If src holds well-formed IconVG data and
+// none of the callbacks returns an error then the err_msg argument to
+// end_decode will be NULL. Otherwise, the call sequence stops as soon as a
+// non-NULL error is encountered, whether a file format error or a callback
+// error. This non-NULL error becomes the err_msg argument to end_decode and
+// this function, iconvg_canvas__decode, returns whatever end_decode returns.
+const char*  //
+iconvg_canvas__decode(iconvg_canvas* self,
+                      const uint8_t* src_ptr,
+                      size_t src_len);
 
 // iconvg_decode_viewbox sets *dst_viewbox to the ViewBox Metadata from the src
 // IconVG-formatted data.
@@ -132,10 +222,107 @@ iconvg_private_reinterpret_from_u32_to_f32(uint32_t u) {
 
 // ----
 
+static inline size_t  //
+iconvg_private_canvas_sizeof_vtable(iconvg_canvas* c) {
+  if (c && c->vtable) {
+    return c->vtable->sizeof__iconvg_canvas_vtable;
+  }
+  return 0;
+}
+
+// ----
+
 typedef struct iconvg_private_decoder_struct {
   const uint8_t* ptr;
   size_t len;
 } iconvg_private_decoder;
+
+// -------------------------------- #include "./canvas.c"
+
+static const char*  //
+iconvg_private_canvas_decode(iconvg_canvas* c,
+                             const uint8_t* src_ptr,
+                             size_t src_len) {
+  return NULL;
+}
+
+const char*  //
+iconvg_canvas__decode(iconvg_canvas* self,
+                      const uint8_t* src_ptr,
+                      size_t src_len) {
+  if (!self) {
+    return iconvg_error_null_argument;
+  } else if (!self->vtable) {
+    return iconvg_error_null_vtable;
+  } else if (self->vtable->sizeof__iconvg_canvas_vtable !=
+             sizeof(iconvg_canvas_vtable)) {
+    // If we want to support multiple library versions (with dynamic linking),
+    // we could detect older versions here (with smaller vtable sizes) and
+    // substitute in an adapter implementation.
+    return iconvg_error_unsupported_vtable;
+  }
+  const char* err_msg = (*self->vtable->begin_decode)(self);
+  if (!err_msg) {
+    err_msg = iconvg_private_canvas_decode(self, src_ptr, src_len);
+  }
+  return (*self->vtable->end_decode)(self, err_msg);
+}
+
+// -------------------------------- #include "./debug.c"
+
+static const char*  //
+iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%sbegin_decode()\n", ((const char*)(c->context_const_ptr)));
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->begin_decode)(wrapped);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    const char* quote = err_msg ? "\"" : "";
+    fprintf(f, "%send_decode(%s%s%s)\n", ((const char*)(c->context_const_ptr)),
+            quote, err_msg ? err_msg : "NULL", quote);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return err_msg;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->end_decode)(wrapped, err_msg);
+}
+
+static const iconvg_canvas_vtable  //
+    iconvg_private_debug_canvas_vtable = {
+        sizeof(iconvg_canvas_vtable),
+        &iconvg_private_debug_canvas__begin_decode,
+        &iconvg_private_debug_canvas__end_decode,
+};
+
+iconvg_canvas  //
+iconvg_make_debug_canvas(FILE* f,
+                         const char* message_prefix,
+                         iconvg_canvas* wrapped) {
+  iconvg_canvas c;
+  c.vtable = &iconvg_private_debug_canvas_vtable;
+  c.context_nonconst_ptr0 = wrapped;
+  c.context_nonconst_ptr1 = f;
+  c.context_const_ptr = message_prefix ? message_prefix : "";
+  c.context_extra = 0;
+  return c;
+}
 
 // -------------------------------- #include "./decoder.c"
 
@@ -336,6 +523,17 @@ const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
 const char iconvg_error_null_argument[] =  //
     "iconvg: null argument";
+const char iconvg_error_null_vtable[] =  //
+    "iconvg: null vtable";
+const char iconvg_error_unsupported_vtable[] =  //
+    "iconvg: unsupported vtable";
+
+bool  //
+iconvg_error_is_file_format_error(const char* err_msg) {
+  return (err_msg == iconvg_error_bad_magic_identifier) ||
+         (err_msg == iconvg_error_bad_metadata) ||
+         (err_msg == iconvg_error_bad_metadata_viewbox);
+}
 
 // -------------------------------- #include "./rectangle.c"
 

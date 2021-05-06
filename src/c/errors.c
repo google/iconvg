@@ -20,3 +20,14 @@ const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
 const char iconvg_error_null_argument[] =  //
     "iconvg: null argument";
+const char iconvg_error_null_vtable[] =  //
+    "iconvg: null vtable";
+const char iconvg_error_unsupported_vtable[] =  //
+    "iconvg: unsupported vtable";
+
+bool  //
+iconvg_error_is_file_format_error(const char* err_msg) {
+  return (err_msg == iconvg_error_bad_magic_identifier) ||
+         (err_msg == iconvg_error_bad_metadata) ||
+         (err_msg == iconvg_error_bad_metadata_viewbox);
+}

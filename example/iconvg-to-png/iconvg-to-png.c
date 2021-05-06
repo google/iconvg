@@ -95,18 +95,21 @@ read_file(size_t* dst_num_bytes_read,
 int  //
 main(int argc, char** argv) {
   // Read the input bytes.
+  const char* input_filename = NULL;
   uint8_t* src_ptr = &g_src_buffer_array[0];
   size_t src_len = 0;
   {
     FILE* in = NULL;
     switch (argc) {
       case 1:
+        input_filename = "<stdin>";
         in = stdin;
         break;
       case 2:
-        in = fopen(argv[1], "r");
+        input_filename = argv[1];
+        in = fopen(input_filename, "r");
         if (!in) {
-          fprintf(stderr, "main: could not open %s: %s\n", argv[1],
+          fprintf(stderr, "main: could not open %s: %s\n", input_filename,
                   strerror(errno));
           return 1;
         }
@@ -121,7 +124,7 @@ main(int argc, char** argv) {
         return 1;
     }
     if (!read_file(&src_len, &g_src_buffer_array[0], SRC_BUFFER_ARRAY_SIZE, in,
-                   (argc > 1) ? argv[1] : "<stdin>")) {
+                   input_filename)) {
       return 1;
     }
   }
@@ -131,7 +134,8 @@ main(int argc, char** argv) {
     iconvg_rectangle viewbox = {};
     const char* err_msg = iconvg_decode_viewbox(&viewbox, src_ptr, src_len);
     if (err_msg) {
-      fprintf(stderr, "main: could not decode %s\n%s\n", argv[1], err_msg);
+      fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
+              err_msg);
       return 1;
     }
     printf("\t%f\n", viewbox.min_x);
@@ -140,6 +144,17 @@ main(int argc, char** argv) {
     printf("\t%f\n", viewbox.max_y);
     printf("\tw: %f\n", iconvg_rectangle__width(&viewbox));
     printf("\th: %f\n", iconvg_rectangle__height(&viewbox));
+  }
+
+  // Decode the IconVG.
+  {
+    iconvg_canvas canvas = iconvg_make_debug_canvas(stdout, "debug: ", NULL);
+    const char* err_msg = iconvg_canvas__decode(&canvas, src_ptr, src_len);
+    if (err_msg) {
+      fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
+              err_msg);
+      return 1;
+    }
   }
 
   return 0;

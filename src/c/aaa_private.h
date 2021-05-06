@@ -34,6 +34,16 @@ iconvg_private_reinterpret_from_u32_to_f32(uint32_t u) {
 
 // ----
 
+static inline size_t  //
+iconvg_private_canvas_sizeof_vtable(iconvg_canvas* c) {
+  if (c && c->vtable) {
+    return c->vtable->sizeof__iconvg_canvas_vtable;
+  }
+  return 0;
+}
+
+// ----
+
 typedef struct iconvg_private_decoder_struct {
   const uint8_t* ptr;
   size_t len;
