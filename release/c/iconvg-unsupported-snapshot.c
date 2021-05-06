@@ -74,6 +74,7 @@
 
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
+extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_null_argument[];
 extern const char iconvg_error_null_vtable[];
@@ -116,6 +117,8 @@ typedef struct iconvg_canvas_vtable__struct {
   size_t sizeof__iconvg_canvas_vtable;
   const char* (*begin_decode)(struct iconvg_canvas__struct*);
   const char* (*end_decode)(struct iconvg_canvas__struct*, const char* err_msg);
+  const char* (*on_metadata_viewbox)(struct iconvg_canvas__struct*,
+                                     iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;
 
 typedef struct iconvg_canvas__struct {
@@ -147,17 +150,19 @@ extern "C" {
 //
 // message_prefix may be NULL, equivalent to an empty prefix.
 //
-// wrapped may be NULL, in which case the iconvg_canvas calls always return
-// success (a NULL error message) except that end_decode returns its (possibly
-// non-NULL) err_msg argument. If wrapped is non-NULL then the caller of this
-// function is responsible for ensuring that wrapped remains a valid pointer
-// while the returned iconvg_canvas is in use.
+// wrapped may be NULL, in which case the iconvg_canvas vtable calls always
+// return success (a NULL error message) except that end_decode returns its
+// (possibly non-NULL) err_msg argument unchanged.
+//
+// If any of the pointer-typed arguments are non-NULL then the caller of this
+// function is responsible for ensuring that the pointers remain valid while
+// the returned iconvg_canvas is in use.
 iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
 
-// iconvg_canvas__decode decodes the src IconVG-formatted data, calling self's
+// iconvg_decode decodes the src IconVG-formatted data, calling dst_canvas's
 // callbacks (vtable functions) to paint the decoded vector graphic.
 //
 // The call sequence always begins with exactly one begin_decode call and ends
@@ -166,11 +171,11 @@ iconvg_make_debug_canvas(FILE* f,
 // end_decode will be NULL. Otherwise, the call sequence stops as soon as a
 // non-NULL error is encountered, whether a file format error or a callback
 // error. This non-NULL error becomes the err_msg argument to end_decode and
-// this function, iconvg_canvas__decode, returns whatever end_decode returns.
+// this function, iconvg_decode, returns whatever end_decode returns.
 const char*  //
-iconvg_canvas__decode(iconvg_canvas* self,
-                      const uint8_t* src_ptr,
-                      size_t src_len);
+iconvg_decode(iconvg_canvas* dst_canvas,
+              const uint8_t* src_ptr,
+              size_t src_len);
 
 // iconvg_decode_viewbox sets *dst_viewbox to the ViewBox Metadata from the src
 // IconVG-formatted data.
@@ -232,41 +237,22 @@ iconvg_private_canvas_sizeof_vtable(iconvg_canvas* c) {
 
 // ----
 
+static inline iconvg_rectangle  //
+iconvg_private_default_viewbox() {
+  iconvg_rectangle r;
+  r.min_x = -32.0f;
+  r.min_y = -32.0f;
+  r.max_x = +32.0f;
+  r.max_y = +32.0f;
+  return r;
+}
+
+// ----
+
 typedef struct iconvg_private_decoder_struct {
   const uint8_t* ptr;
   size_t len;
 } iconvg_private_decoder;
-
-// -------------------------------- #include "./canvas.c"
-
-static const char*  //
-iconvg_private_canvas_decode(iconvg_canvas* c,
-                             const uint8_t* src_ptr,
-                             size_t src_len) {
-  return NULL;
-}
-
-const char*  //
-iconvg_canvas__decode(iconvg_canvas* self,
-                      const uint8_t* src_ptr,
-                      size_t src_len) {
-  if (!self) {
-    return iconvg_error_null_argument;
-  } else if (!self->vtable) {
-    return iconvg_error_null_vtable;
-  } else if (self->vtable->sizeof__iconvg_canvas_vtable !=
-             sizeof(iconvg_canvas_vtable)) {
-    // If we want to support multiple library versions (with dynamic linking),
-    // we could detect older versions here (with smaller vtable sizes) and
-    // substitute in an adapter implementation.
-    return iconvg_error_unsupported_vtable;
-  }
-  const char* err_msg = (*self->vtable->begin_decode)(self);
-  if (!err_msg) {
-    err_msg = iconvg_private_canvas_decode(self, src_ptr, src_len);
-  }
-  return (*self->vtable->end_decode)(self, err_msg);
-}
 
 // -------------------------------- #include "./debug.c"
 
@@ -304,11 +290,31 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
   return (*wrapped->vtable->end_decode)(wrapped, err_msg);
 }
 
+static const char*  //
+iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
+                                                 iconvg_rectangle viewbox) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%son_metadata_viewbox({%g, %g, %g, %g})\n",
+            ((const char*)(c->context_const_ptr)), viewbox.min_x, viewbox.min_y,
+            viewbox.max_x, viewbox.max_y);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->on_metadata_viewbox)(wrapped, viewbox);
+}
+
 static const iconvg_canvas_vtable  //
     iconvg_private_debug_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 
 iconvg_canvas  //
@@ -325,16 +331,6 @@ iconvg_make_debug_canvas(FILE* f,
 }
 
 // -------------------------------- #include "./decoder.c"
-
-static void  //
-iconvg_private_decoder__init(iconvg_private_decoder* self,
-                             const uint8_t* ptr,
-                             size_t len) {
-  self->ptr = ptr;
-  self->len = len;
-}
-
-// ----
 
 static void  //
 iconvg_private_decoder__advance_to_ptr(iconvg_private_decoder* self,
@@ -465,7 +461,9 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len) {
   iconvg_private_decoder d;
-  iconvg_private_decoder__init(&d, src_ptr, src_len);
+  d.ptr = src_ptr;
+  d.len = src_len;
+
   if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
     return iconvg_error_bad_magic_identifier;
   }
@@ -476,6 +474,7 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
   }
 
   bool use_default_viewbox = true;
+  int32_t previous_metadata_id = -1;
   for (; num_metadata_chunks > 0; num_metadata_chunks--) {
     uint32_t chunk_length;
     if (!iconvg_private_decoder__decode_natural_number(&d, &chunk_length) ||
@@ -487,9 +486,12 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
     uint32_t metadata_id;
     if (!iconvg_private_decoder__decode_natural_number(&chunk, &metadata_id)) {
       return iconvg_error_bad_metadata;
+    } else if (previous_metadata_id >= ((int32_t)metadata_id)) {
+      return iconvg_error_bad_metadata_id_order;
     }
 
     if (metadata_id == 0) {  // MID 0 (ViewBox).
+      use_default_viewbox = false;
       iconvg_rectangle r;
       if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
           (chunk.len != 0)) {
@@ -497,20 +499,111 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
       } else if (dst_viewbox) {
         *dst_viewbox = r;
       }
-      use_default_viewbox = false;
     }
 
     iconvg_private_decoder__skip_to_the_end(&chunk);
     iconvg_private_decoder__advance_to_ptr(&d, chunk.ptr);
+    previous_metadata_id = ((int32_t)metadata_id);
   }
 
   if (use_default_viewbox && dst_viewbox) {
-    dst_viewbox->min_x = -32.0f;
-    dst_viewbox->min_y = -32.0f;
-    dst_viewbox->max_x = +32.0f;
-    dst_viewbox->max_y = +32.0f;
+    *dst_viewbox = iconvg_private_default_viewbox();
   }
   return NULL;
+}
+
+static const char*  //
+iconvg_private_decode(iconvg_canvas* c,
+                      const uint8_t* src_ptr,
+                      size_t src_len) {
+  const char* err_msg = NULL;
+  iconvg_private_decoder d;
+  d.ptr = src_ptr;
+  d.len = src_len;
+
+  if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
+    return iconvg_error_bad_magic_identifier;
+  }
+  uint32_t num_metadata_chunks;
+  if (!iconvg_private_decoder__decode_natural_number(&d,
+                                                     &num_metadata_chunks)) {
+    return iconvg_error_bad_metadata;
+  }
+
+  bool use_default_viewbox = true;
+  int32_t previous_metadata_id = -1;
+  for (; num_metadata_chunks > 0; num_metadata_chunks--) {
+    uint32_t chunk_length;
+    if (!iconvg_private_decoder__decode_natural_number(&d, &chunk_length) ||
+        (chunk_length > d.len)) {
+      return iconvg_error_bad_metadata;
+    }
+    iconvg_private_decoder chunk =
+        iconvg_private_decoder__limit_u32(&d, chunk_length);
+    uint32_t metadata_id;
+    if (!iconvg_private_decoder__decode_natural_number(&chunk, &metadata_id)) {
+      return iconvg_error_bad_metadata;
+    } else if (previous_metadata_id >= ((int32_t)metadata_id)) {
+      return iconvg_error_bad_metadata_id_order;
+    }
+
+    if (metadata_id == 0) {  // MID 0 (ViewBox).
+      use_default_viewbox = false;
+      iconvg_rectangle r;
+      if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
+          (chunk.len != 0)) {
+        return iconvg_error_bad_metadata_viewbox;
+      }
+      err_msg = (*c->vtable->on_metadata_viewbox)(c, r);
+      if (err_msg) {
+        return err_msg;
+      }
+    } else if ((metadata_id > 0) && use_default_viewbox) {
+      use_default_viewbox = false;
+      err_msg = (*c->vtable->on_metadata_viewbox)(
+          c, iconvg_private_default_viewbox());
+      if (err_msg) {
+        return err_msg;
+      }
+    }
+
+    iconvg_private_decoder__skip_to_the_end(&chunk);
+    iconvg_private_decoder__advance_to_ptr(&d, chunk.ptr);
+    previous_metadata_id = ((int32_t)metadata_id);
+  }
+
+  if (use_default_viewbox) {
+    use_default_viewbox = false;
+    err_msg =
+        (*c->vtable->on_metadata_viewbox)(c, iconvg_private_default_viewbox());
+    if (err_msg) {
+      return err_msg;
+    }
+  }
+
+  return NULL;
+}
+
+const char*  //
+iconvg_decode(iconvg_canvas* dst_canvas,
+              const uint8_t* src_ptr,
+              size_t src_len) {
+  if (!dst_canvas) {
+    return iconvg_error_null_argument;
+  } else if (!dst_canvas->vtable) {
+    return iconvg_error_null_vtable;
+  } else if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
+             sizeof(iconvg_canvas_vtable)) {
+    // If we want to support multiple library versions (with dynamic linking),
+    // we could detect older versions here (with smaller vtable sizes) and
+    // substitute in an adapter implementation.
+    return iconvg_error_unsupported_vtable;
+  }
+  const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
+  if (!err_msg) {
+    err_msg = iconvg_private_decode(dst_canvas, src_ptr, src_len);
+  }
+  return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg);
 }
 
 // -------------------------------- #include "./errors.c"
@@ -519,6 +612,8 @@ const char iconvg_error_bad_magic_identifier[] =  //
     "iconvg: bad magic identifier";
 const char iconvg_error_bad_metadata[] =  //
     "iconvg: bad metadata";
+const char iconvg_error_bad_metadata_id_order[] =  //
+    "iconvg: bad metadata ID order";
 const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
 const char iconvg_error_null_argument[] =  //
@@ -532,6 +627,7 @@ bool  //
 iconvg_error_is_file_format_error(const char* err_msg) {
   return (err_msg == iconvg_error_bad_magic_identifier) ||
          (err_msg == iconvg_error_bad_metadata) ||
+         (err_msg == iconvg_error_bad_metadata_id_order) ||
          (err_msg == iconvg_error_bad_metadata_viewbox);
 }
 

@@ -46,11 +46,31 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
   return (*wrapped->vtable->end_decode)(wrapped, err_msg);
 }
 
+static const char*  //
+iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
+                                                 iconvg_rectangle viewbox) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%son_metadata_viewbox({%g, %g, %g, %g})\n",
+            ((const char*)(c->context_const_ptr)), viewbox.min_x, viewbox.min_y,
+            viewbox.max_x, viewbox.max_y);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->on_metadata_viewbox)(wrapped, viewbox);
+}
+
 static const iconvg_canvas_vtable  //
     iconvg_private_debug_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 
 iconvg_canvas  //

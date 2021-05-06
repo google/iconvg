@@ -138,18 +138,12 @@ main(int argc, char** argv) {
               err_msg);
       return 1;
     }
-    printf("\t%f\n", viewbox.min_x);
-    printf("\t%f\n", viewbox.min_y);
-    printf("\t%f\n", viewbox.max_x);
-    printf("\t%f\n", viewbox.max_y);
-    printf("\tw: %f\n", iconvg_rectangle__width(&viewbox));
-    printf("\th: %f\n", iconvg_rectangle__height(&viewbox));
   }
 
   // Decode the IconVG.
   {
     iconvg_canvas canvas = iconvg_make_debug_canvas(stdout, "debug: ", NULL);
-    const char* err_msg = iconvg_canvas__decode(&canvas, src_ptr, src_len);
+    const char* err_msg = iconvg_decode(&canvas, src_ptr, src_len);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
               err_msg);

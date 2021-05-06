@@ -13,16 +13,6 @@
 // limitations under the License.
 
 static void  //
-iconvg_private_decoder__init(iconvg_private_decoder* self,
-                             const uint8_t* ptr,
-                             size_t len) {
-  self->ptr = ptr;
-  self->len = len;
-}
-
-// ----
-
-static void  //
 iconvg_private_decoder__advance_to_ptr(iconvg_private_decoder* self,
                                        const uint8_t* new_ptr) {
   if (new_ptr >= self->ptr) {
@@ -151,7 +141,9 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len) {
   iconvg_private_decoder d;
-  iconvg_private_decoder__init(&d, src_ptr, src_len);
+  d.ptr = src_ptr;
+  d.len = src_len;
+
   if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
     return iconvg_error_bad_magic_identifier;
   }
@@ -162,6 +154,7 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
   }
 
   bool use_default_viewbox = true;
+  int32_t previous_metadata_id = -1;
   for (; num_metadata_chunks > 0; num_metadata_chunks--) {
     uint32_t chunk_length;
     if (!iconvg_private_decoder__decode_natural_number(&d, &chunk_length) ||
@@ -173,9 +166,12 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
     uint32_t metadata_id;
     if (!iconvg_private_decoder__decode_natural_number(&chunk, &metadata_id)) {
       return iconvg_error_bad_metadata;
+    } else if (previous_metadata_id >= ((int32_t)metadata_id)) {
+      return iconvg_error_bad_metadata_id_order;
     }
 
     if (metadata_id == 0) {  // MID 0 (ViewBox).
+      use_default_viewbox = false;
       iconvg_rectangle r;
       if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
           (chunk.len != 0)) {
@@ -183,18 +179,109 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
       } else if (dst_viewbox) {
         *dst_viewbox = r;
       }
-      use_default_viewbox = false;
     }
 
     iconvg_private_decoder__skip_to_the_end(&chunk);
     iconvg_private_decoder__advance_to_ptr(&d, chunk.ptr);
+    previous_metadata_id = ((int32_t)metadata_id);
   }
 
   if (use_default_viewbox && dst_viewbox) {
-    dst_viewbox->min_x = -32.0f;
-    dst_viewbox->min_y = -32.0f;
-    dst_viewbox->max_x = +32.0f;
-    dst_viewbox->max_y = +32.0f;
+    *dst_viewbox = iconvg_private_default_viewbox();
   }
   return NULL;
+}
+
+static const char*  //
+iconvg_private_decode(iconvg_canvas* c,
+                      const uint8_t* src_ptr,
+                      size_t src_len) {
+  const char* err_msg = NULL;
+  iconvg_private_decoder d;
+  d.ptr = src_ptr;
+  d.len = src_len;
+
+  if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
+    return iconvg_error_bad_magic_identifier;
+  }
+  uint32_t num_metadata_chunks;
+  if (!iconvg_private_decoder__decode_natural_number(&d,
+                                                     &num_metadata_chunks)) {
+    return iconvg_error_bad_metadata;
+  }
+
+  bool use_default_viewbox = true;
+  int32_t previous_metadata_id = -1;
+  for (; num_metadata_chunks > 0; num_metadata_chunks--) {
+    uint32_t chunk_length;
+    if (!iconvg_private_decoder__decode_natural_number(&d, &chunk_length) ||
+        (chunk_length > d.len)) {
+      return iconvg_error_bad_metadata;
+    }
+    iconvg_private_decoder chunk =
+        iconvg_private_decoder__limit_u32(&d, chunk_length);
+    uint32_t metadata_id;
+    if (!iconvg_private_decoder__decode_natural_number(&chunk, &metadata_id)) {
+      return iconvg_error_bad_metadata;
+    } else if (previous_metadata_id >= ((int32_t)metadata_id)) {
+      return iconvg_error_bad_metadata_id_order;
+    }
+
+    if (metadata_id == 0) {  // MID 0 (ViewBox).
+      use_default_viewbox = false;
+      iconvg_rectangle r;
+      if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
+          (chunk.len != 0)) {
+        return iconvg_error_bad_metadata_viewbox;
+      }
+      err_msg = (*c->vtable->on_metadata_viewbox)(c, r);
+      if (err_msg) {
+        return err_msg;
+      }
+    } else if ((metadata_id > 0) && use_default_viewbox) {
+      use_default_viewbox = false;
+      err_msg = (*c->vtable->on_metadata_viewbox)(
+          c, iconvg_private_default_viewbox());
+      if (err_msg) {
+        return err_msg;
+      }
+    }
+
+    iconvg_private_decoder__skip_to_the_end(&chunk);
+    iconvg_private_decoder__advance_to_ptr(&d, chunk.ptr);
+    previous_metadata_id = ((int32_t)metadata_id);
+  }
+
+  if (use_default_viewbox) {
+    use_default_viewbox = false;
+    err_msg =
+        (*c->vtable->on_metadata_viewbox)(c, iconvg_private_default_viewbox());
+    if (err_msg) {
+      return err_msg;
+    }
+  }
+
+  return NULL;
+}
+
+const char*  //
+iconvg_decode(iconvg_canvas* dst_canvas,
+              const uint8_t* src_ptr,
+              size_t src_len) {
+  if (!dst_canvas) {
+    return iconvg_error_null_argument;
+  } else if (!dst_canvas->vtable) {
+    return iconvg_error_null_vtable;
+  } else if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
+             sizeof(iconvg_canvas_vtable)) {
+    // If we want to support multiple library versions (with dynamic linking),
+    // we could detect older versions here (with smaller vtable sizes) and
+    // substitute in an adapter implementation.
+    return iconvg_error_unsupported_vtable;
+  }
+  const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
+  if (!err_msg) {
+    err_msg = iconvg_private_decode(dst_canvas, src_ptr, src_len);
+  }
+  return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg);
 }

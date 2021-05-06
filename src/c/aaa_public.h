@@ -29,6 +29,7 @@
 
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
+extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_null_argument[];
 extern const char iconvg_error_null_vtable[];
@@ -71,6 +72,8 @@ typedef struct iconvg_canvas_vtable__struct {
   size_t sizeof__iconvg_canvas_vtable;
   const char* (*begin_decode)(struct iconvg_canvas__struct*);
   const char* (*end_decode)(struct iconvg_canvas__struct*, const char* err_msg);
+  const char* (*on_metadata_viewbox)(struct iconvg_canvas__struct*,
+                                     iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;
 
 typedef struct iconvg_canvas__struct {
@@ -102,17 +105,19 @@ extern "C" {
 //
 // message_prefix may be NULL, equivalent to an empty prefix.
 //
-// wrapped may be NULL, in which case the iconvg_canvas calls always return
-// success (a NULL error message) except that end_decode returns its (possibly
-// non-NULL) err_msg argument. If wrapped is non-NULL then the caller of this
-// function is responsible for ensuring that wrapped remains a valid pointer
-// while the returned iconvg_canvas is in use.
+// wrapped may be NULL, in which case the iconvg_canvas vtable calls always
+// return success (a NULL error message) except that end_decode returns its
+// (possibly non-NULL) err_msg argument unchanged.
+//
+// If any of the pointer-typed arguments are non-NULL then the caller of this
+// function is responsible for ensuring that the pointers remain valid while
+// the returned iconvg_canvas is in use.
 iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
 
-// iconvg_canvas__decode decodes the src IconVG-formatted data, calling self's
+// iconvg_decode decodes the src IconVG-formatted data, calling dst_canvas's
 // callbacks (vtable functions) to paint the decoded vector graphic.
 //
 // The call sequence always begins with exactly one begin_decode call and ends
@@ -121,11 +126,11 @@ iconvg_make_debug_canvas(FILE* f,
 // end_decode will be NULL. Otherwise, the call sequence stops as soon as a
 // non-NULL error is encountered, whether a file format error or a callback
 // error. This non-NULL error becomes the err_msg argument to end_decode and
-// this function, iconvg_canvas__decode, returns whatever end_decode returns.
+// this function, iconvg_decode, returns whatever end_decode returns.
 const char*  //
-iconvg_canvas__decode(iconvg_canvas* self,
-                      const uint8_t* src_ptr,
-                      size_t src_len);
+iconvg_decode(iconvg_canvas* dst_canvas,
+              const uint8_t* src_ptr,
+              size_t src_len);
 
 // iconvg_decode_viewbox sets *dst_viewbox to the ViewBox Metadata from the src
 // IconVG-formatted data.

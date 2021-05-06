@@ -58,7 +58,6 @@
 #include "./aaa_public.h"
 #ifdef ICONVG_IMPLEMENTATION
 #include "./aaa_private.h"
-#include "./canvas.c"
 #include "./debug.c"
 #include "./decoder.c"
 #include "./errors.c"
