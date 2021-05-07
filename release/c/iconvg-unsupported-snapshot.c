@@ -138,7 +138,9 @@ typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
   const char* (*begin_decode)(struct iconvg_canvas_struct* c);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
-                            const char* err_msg);
+                            const char* err_msg,
+                            size_t num_bytes_consumed,
+                            size_t num_bytes_remaining);
   const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
   const char* (*end_path)(struct iconvg_canvas_struct* c);
   const char* (*path_line_to)(struct iconvg_canvas_struct* c,
@@ -478,12 +480,17 @@ iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
 }
 
 static const char*  //
-iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
+iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
+                                        const char* err_msg,
+                                        size_t num_bytes_consumed,
+                                        size_t num_bytes_remaining) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
     const char* quote = err_msg ? "\"" : "";
-    fprintf(f, "%send_decode(%s%s%s)\n", ((const char*)(c->context_const_ptr)),
-            quote, err_msg ? err_msg : "NULL", quote);
+    fprintf(f, "%send_decode(%s%s%s, %zu, %zu)\n",
+            ((const char*)(c->context_const_ptr)), quote,
+            err_msg ? err_msg : "NULL", quote, num_bytes_consumed,
+            num_bytes_remaining);
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
   if (!wrapped) {
@@ -492,7 +499,8 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
              sizeof(iconvg_canvas_vtable)) {
     return iconvg_error_unsupported_vtable;
   }
-  return (*wrapped->vtable->end_decode)(wrapped, err_msg);
+  return (*wrapped->vtable->end_decode)(wrapped, err_msg, num_bytes_consumed,
+                                        num_bytes_remaining);
 }
 
 static const char*  //
@@ -1391,26 +1399,19 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
 }
 
 static const char*  //
-iconvg_private_decode(iconvg_canvas* c,
-                      const uint8_t* src_ptr,
-                      size_t src_len) {
+iconvg_private_decode(iconvg_canvas* c, iconvg_private_decoder* d) {
   const char* err_msg = NULL;
-
-  iconvg_private_decoder d;
-  d.ptr = src_ptr;
-  d.len = src_len;
 
   // TODO: custom/suggested palette.
   iconvg_private_bank b;
   memset(b.creg, 0x00, sizeof(b.creg));
   memset(b.nreg, 0x00, sizeof(b.nreg));
 
-  if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
+  if (!iconvg_private_decoder__decode_magic_identifier(d)) {
     return iconvg_error_bad_magic_identifier;
   }
   uint32_t num_metadata_chunks;
-  if (!iconvg_private_decoder__decode_natural_number(&d,
-                                                     &num_metadata_chunks)) {
+  if (!iconvg_private_decoder__decode_natural_number(d, &num_metadata_chunks)) {
     return iconvg_error_bad_metadata;
   }
 
@@ -1418,12 +1419,12 @@ iconvg_private_decode(iconvg_canvas* c,
   int32_t previous_metadata_id = -1;
   for (; num_metadata_chunks > 0; num_metadata_chunks--) {
     uint32_t chunk_length;
-    if (!iconvg_private_decoder__decode_natural_number(&d, &chunk_length) ||
-        (chunk_length > d.len)) {
+    if (!iconvg_private_decoder__decode_natural_number(d, &chunk_length) ||
+        (chunk_length > d->len)) {
       return iconvg_error_bad_metadata;
     }
     iconvg_private_decoder chunk =
-        iconvg_private_decoder__limit_u32(&d, chunk_length);
+        iconvg_private_decoder__limit_u32(d, chunk_length);
     uint32_t metadata_id;
     if (!iconvg_private_decoder__decode_natural_number(&chunk, &metadata_id)) {
       return iconvg_error_bad_metadata;
@@ -1452,7 +1453,7 @@ iconvg_private_decode(iconvg_canvas* c,
     }
 
     iconvg_private_decoder__skip_to_the_end(&chunk);
-    iconvg_private_decoder__advance_to_ptr(&d, chunk.ptr);
+    iconvg_private_decoder__advance_to_ptr(d, chunk.ptr);
     previous_metadata_id = ((int32_t)metadata_id);
   }
 
@@ -1465,7 +1466,7 @@ iconvg_private_decode(iconvg_canvas* c,
     }
   }
 
-  return iconvg_private_execute_bytecode(c, &d, &b);
+  return iconvg_private_execute_bytecode(c, d, &b);
 }
 
 const char*  //
@@ -1486,11 +1487,17 @@ iconvg_decode(iconvg_canvas* dst_canvas,
     // substitute in an adapter implementation.
     return iconvg_error_unsupported_vtable;
   }
+
+  iconvg_private_decoder d;
+  d.ptr = src_ptr;
+  d.len = src_len;
+
   const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
   if (!err_msg) {
-    err_msg = iconvg_private_decode(dst_canvas, src_ptr, src_len);
+    err_msg = iconvg_private_decode(dst_canvas, &d);
   }
-  return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg);
+  return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg, src_len - d.len,
+                                           d.len);
 }
 
 // -------------------------------- #include "./errors.c"

@@ -29,12 +29,17 @@ iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
 }
 
 static const char*  //
-iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
+iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
+                                        const char* err_msg,
+                                        size_t num_bytes_consumed,
+                                        size_t num_bytes_remaining) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
     const char* quote = err_msg ? "\"" : "";
-    fprintf(f, "%send_decode(%s%s%s)\n", ((const char*)(c->context_const_ptr)),
-            quote, err_msg ? err_msg : "NULL", quote);
+    fprintf(f, "%send_decode(%s%s%s, %zu, %zu)\n",
+            ((const char*)(c->context_const_ptr)), quote,
+            err_msg ? err_msg : "NULL", quote, num_bytes_consumed,
+            num_bytes_remaining);
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
   if (!wrapped) {
@@ -43,7 +48,8 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
              sizeof(iconvg_canvas_vtable)) {
     return iconvg_error_unsupported_vtable;
   }
-  return (*wrapped->vtable->end_decode)(wrapped, err_msg);
+  return (*wrapped->vtable->end_decode)(wrapped, err_msg, num_bytes_consumed,
+                                        num_bytes_remaining);
 }
 
 static const char*  //

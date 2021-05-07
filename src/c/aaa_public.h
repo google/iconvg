@@ -93,7 +93,9 @@ typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
   const char* (*begin_decode)(struct iconvg_canvas_struct* c);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
-                            const char* err_msg);
+                            const char* err_msg,
+                            size_t num_bytes_consumed,
+                            size_t num_bytes_remaining);
   const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
   const char* (*end_path)(struct iconvg_canvas_struct* c);
   const char* (*path_line_to)(struct iconvg_canvas_struct* c,
