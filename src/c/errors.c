@@ -24,6 +24,8 @@ const char iconvg_error_bad_metadata_id_order[] =  //
     "iconvg: bad metadata ID order";
 const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
+const char iconvg_error_bad_number[] =  //
+    "iconvg: bad number";
 const char iconvg_error_bad_path_unfinished[] =  //
     "iconvg: bad path (unfinished)";
 const char iconvg_error_bad_styling_opcode[] =  //
@@ -47,6 +49,7 @@ iconvg_error_is_file_format_error(const char* err_msg) {
          (err_msg == iconvg_error_bad_metadata) ||
          (err_msg == iconvg_error_bad_metadata_id_order) ||
          (err_msg == iconvg_error_bad_metadata_viewbox) ||
+         (err_msg == iconvg_error_bad_number) ||
          (err_msg == iconvg_error_bad_path_unfinished) ||
          (err_msg == iconvg_error_bad_styling_opcode);
 }

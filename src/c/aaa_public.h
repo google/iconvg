@@ -34,6 +34,7 @@ extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
+extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
 

@@ -79,6 +79,7 @@ extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
+extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
 
@@ -589,6 +590,39 @@ iconvg_private_decoder__decode_natural_number(iconvg_private_decoder* self,
   return false;
 }
 
+static bool  //
+iconvg_private_decoder__decode_real_number(iconvg_private_decoder* self,
+                                           float* dst) {
+  if (self->len >= 1) {
+    uint8_t v = self->ptr[0];
+    if ((v & 0x01) == 0) {  // 1-byte encoding.
+      *dst = (float)(v >> 1);
+      self->ptr += 1;
+      self->len -= 1;
+      return true;
+
+    } else if ((v & 0x02) == 0) {  // 2-byte encoding.
+      if (self->len >= 2) {
+        *dst = (float)(iconvg_private_peek_u16le(self->ptr) >> 2);
+        self->ptr += 2;
+        self->len -= 2;
+        return true;
+      }
+
+    } else {  // 4-byte encoding.
+      if (self->len >= 4) {
+        // TODO: reject NaNs?
+        *dst = iconvg_private_reinterpret_from_u32_to_f32(
+            0xFFFFFFFCu & iconvg_private_peek_u32le(self->ptr));
+        self->ptr += 4;
+        self->len -= 4;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ----
 
 static bool  //
@@ -631,6 +665,8 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float x3 = +0.0f;
   float y3 = +0.0f;
 
+  float lod[2] = {0};
+
 styling_mode:
   while (true) {
     if (d->len == 0) {
@@ -660,8 +696,11 @@ styling_mode:
       goto drawing_mode;
 
     } else if (opcode < 0xC8) {  // Set Level of Detail bounds.
-      // TODO: implement.
-      return iconvg_error_bad_styling_opcode;
+      if (!iconvg_private_decoder__decode_real_number(d, &lod[0]) ||
+          !iconvg_private_decoder__decode_real_number(d, &lod[1])) {
+        return iconvg_error_bad_number;
+      }
+      continue;
     }
 
     return iconvg_error_bad_styling_opcode;
@@ -678,15 +717,104 @@ drawing_mode:
 
     switch (opcode >> 4) {
       case 0x00:
-      case 0x01:
+      case 0x01: {  // 'L' mnemonic: absolute line_to.
+        for (int reps = opcode & 0x1F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+            return iconvg_error_bad_coordinate;
+          }
+          ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
+
       case 0x02:
-      case 0x03:
-      case 0x04:
-      case 0x05:
-      case 0x06:
-      case 0x07:
-        // TODO: implement.
-        return iconvg_error_bad_drawing_opcode;
+      case 0x03: {  // 'l' mnemonic: relative line_to.
+        for (int reps = opcode & 0x1F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1)) {
+            return iconvg_error_bad_coordinate;
+          }
+          curr_x += x1;
+          curr_y += y1;
+          ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
+
+      case 0x04: {  // 'T' mnemonic: absolute smooth quad_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
+            return iconvg_error_bad_coordinate;
+          }
+          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          curr_x = x2;
+          curr_y = y2;
+          x1 = (2 * curr_x) - x1;
+          y1 = (2 * curr_y) - y1;
+        }
+        continue;
+      }
+
+      case 0x05: {  // 't' mnemonic: relative smooth quad_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
+            return iconvg_error_bad_coordinate;
+          }
+          x2 += curr_x;
+          y2 += curr_y;
+          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          curr_x = x2;
+          curr_y = y2;
+          x1 = (2 * curr_x) - x1;
+          y1 = (2 * curr_y) - y1;
+        }
+        continue;
+      }
+
+      case 0x06: {  // 'Q' mnemonic: absolute quad_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
+            return iconvg_error_bad_coordinate;
+          }
+          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          curr_x = x2;
+          curr_y = y2;
+          x1 = (2 * curr_x) - x1;
+          y1 = (2 * curr_y) - y1;
+        }
+        continue;
+      }
+
+      case 0x07: {  // 'q' mnemonic: relative quad_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
+            return iconvg_error_bad_coordinate;
+          }
+          x1 += curr_x;
+          y1 += curr_y;
+          x2 += curr_x;
+          y2 += curr_y;
+          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          curr_x = x2;
+          curr_y = y2;
+          x1 = (2 * curr_x) - x1;
+          y1 = (2 * curr_y) - y1;
+        }
+        continue;
+      }
 
       case 0x08: {  // 'S' mnemonic: absolute smooth cube_to.
         for (int reps = opcode & 0x0F; reps >= 0; reps--) {
@@ -700,8 +828,8 @@ drawing_mode:
               (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
           curr_x = x3;
           curr_y = y3;
-          x1 = (2 * x3) - x2;
-          y1 = (2 * y3) - y2;
+          x1 = (2 * curr_x) - x2;
+          y1 = (2 * curr_y) - y2;
         }
         continue;
       }
@@ -722,8 +850,8 @@ drawing_mode:
               (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
           curr_x = x3;
           curr_y = y3;
-          x1 = (2 * x3) - x2;
-          y1 = (2 * y3) - y2;
+          x1 = (2 * curr_x) - x2;
+          y1 = (2 * curr_y) - y2;
         }
         continue;
       }
@@ -742,8 +870,8 @@ drawing_mode:
               (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
           curr_x = x3;
           curr_y = y3;
-          x1 = (2 * x3) - x2;
-          y1 = (2 * y3) - y2;
+          x1 = (2 * curr_x) - x2;
+          y1 = (2 * curr_y) - y2;
         }
         continue;
       }
@@ -768,8 +896,8 @@ drawing_mode:
               (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
           curr_x = x3;
           curr_y = y3;
-          x1 = (2 * x3) - x2;
-          y1 = (2 * y3) - y2;
+          x1 = (2 * curr_x) - x2;
+          y1 = (2 * curr_y) - y2;
         }
         continue;
       }
@@ -1036,6 +1164,8 @@ const char iconvg_error_bad_metadata_id_order[] =  //
     "iconvg: bad metadata ID order";
 const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
+const char iconvg_error_bad_number[] =  //
+    "iconvg: bad number";
 const char iconvg_error_bad_path_unfinished[] =  //
     "iconvg: bad path (unfinished)";
 const char iconvg_error_bad_styling_opcode[] =  //
@@ -1059,6 +1189,7 @@ iconvg_error_is_file_format_error(const char* err_msg) {
          (err_msg == iconvg_error_bad_metadata) ||
          (err_msg == iconvg_error_bad_metadata_id_order) ||
          (err_msg == iconvg_error_bad_metadata_viewbox) ||
+         (err_msg == iconvg_error_bad_number) ||
          (err_msg == iconvg_error_bad_path_unfinished) ||
          (err_msg == iconvg_error_bad_styling_opcode);
 }
