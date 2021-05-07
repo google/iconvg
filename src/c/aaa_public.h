@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -27,11 +28,15 @@
 // Other errors (invalid_etc, null_etc, unsupported_etc) are typically
 // programming errors instead of file format errors.
 
+extern const char iconvg_error_bad_coordinate[];
+extern const char iconvg_error_bad_drawing_opcode[];
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
-extern const char iconvg_error_null_argument[];
+extern const char iconvg_error_bad_path_unfinished[];
+extern const char iconvg_error_bad_styling_opcode[];
+
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
@@ -55,6 +60,20 @@ typedef struct iconvg_rectangle_struct {
 
 // ----
 
+#define ICONVG_RGBA_INDEX___RED 0
+#define ICONVG_RGBA_INDEX__BLUE 1
+#define ICONVG_RGBA_INDEX_GREEN 2
+#define ICONVG_RGBA_INDEX_ALPHA 3
+
+// iconvg_premul_color is an alpha-premultiplied RGBA color. Alpha-
+// premultiplication means that {0x00, 0xC0, 0x00, 0xC0} represents a
+// 75%-opaque, fully saturated green.
+typedef struct iconvg_premul_color_struct {
+  uint8_t rgba[4];
+} iconvg_premul_color;
+
+// ----
+
 // iconvg_canvas is conceptually a 'virtual super-class' with e.g. Cairo-backed
 // or Skia-backed 'sub-classes'.
 //
@@ -66,17 +85,35 @@ typedef struct iconvg_rectangle_struct {
 // iconvg_canvas_vtable types. Only that iconvg_make_etc_canvas creates a
 // canvas and the iconvg_canvas__etc methods take a canvas as an argument.
 
-struct iconvg_canvas__struct;
+struct iconvg_canvas_struct;
 
-typedef struct iconvg_canvas_vtable__struct {
+typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
-  const char* (*begin_decode)(struct iconvg_canvas__struct*);
-  const char* (*end_decode)(struct iconvg_canvas__struct*, const char* err_msg);
-  const char* (*on_metadata_viewbox)(struct iconvg_canvas__struct*,
+  const char* (*begin_decode)(struct iconvg_canvas_struct* c);
+  const char* (*end_decode)(struct iconvg_canvas_struct* c,
+                            const char* err_msg);
+  const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
+  const char* (*end_path)(struct iconvg_canvas_struct* c);
+  const char* (*path_line_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1);
+  const char* (*path_quad_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1,
+                              float x2,
+                              float y2);
+  const char* (*path_cube_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1,
+                              float x2,
+                              float y2,
+                              float x3,
+                              float y3);
+  const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;
 
-typedef struct iconvg_canvas__struct {
+typedef struct iconvg_canvas_struct {
   // vtable defines what 'sub-class' we have.
   const iconvg_canvas_vtable* vtable;
 

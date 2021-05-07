@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+const char iconvg_error_bad_coordinate[] =  //
+    "iconvg: bad coordinate";
+const char iconvg_error_bad_drawing_opcode[] =  //
+    "iconvg: bad drawing opcode";
 const char iconvg_error_bad_magic_identifier[] =  //
     "iconvg: bad magic identifier";
 const char iconvg_error_bad_metadata[] =  //
@@ -20,17 +24,29 @@ const char iconvg_error_bad_metadata_id_order[] =  //
     "iconvg: bad metadata ID order";
 const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
-const char iconvg_error_null_argument[] =  //
-    "iconvg: null argument";
+const char iconvg_error_bad_path_unfinished[] =  //
+    "iconvg: bad path (unfinished)";
+const char iconvg_error_bad_styling_opcode[] =  //
+    "iconvg: bad styling opcode";
+
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //
     "iconvg: unsupported vtable";
 
+const char iconvg_private_internal_error_unreachable[] =  //
+    "iconvg: internal error: unreachable";
+
+// ----
+
 bool  //
 iconvg_error_is_file_format_error(const char* err_msg) {
-  return (err_msg == iconvg_error_bad_magic_identifier) ||
+  return (err_msg == iconvg_error_bad_coordinate) ||
+         (err_msg == iconvg_error_bad_drawing_opcode) ||
+         (err_msg == iconvg_error_bad_magic_identifier) ||
          (err_msg == iconvg_error_bad_metadata) ||
          (err_msg == iconvg_error_bad_metadata_id_order) ||
-         (err_msg == iconvg_error_bad_metadata_viewbox);
+         (err_msg == iconvg_error_bad_metadata_viewbox) ||
+         (err_msg == iconvg_error_bad_path_unfinished) ||
+         (err_msg == iconvg_error_bad_styling_opcode);
 }

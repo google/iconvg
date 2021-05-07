@@ -57,6 +57,7 @@
 
 // -------------------------------- #include "./aaa_public.h"
 
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -72,11 +73,15 @@
 // Other errors (invalid_etc, null_etc, unsupported_etc) are typically
 // programming errors instead of file format errors.
 
+extern const char iconvg_error_bad_coordinate[];
+extern const char iconvg_error_bad_drawing_opcode[];
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_id_order[];
 extern const char iconvg_error_bad_metadata_viewbox[];
-extern const char iconvg_error_null_argument[];
+extern const char iconvg_error_bad_path_unfinished[];
+extern const char iconvg_error_bad_styling_opcode[];
+
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
@@ -100,6 +105,20 @@ typedef struct iconvg_rectangle_struct {
 
 // ----
 
+#define ICONVG_RGBA_INDEX___RED 0
+#define ICONVG_RGBA_INDEX__BLUE 1
+#define ICONVG_RGBA_INDEX_GREEN 2
+#define ICONVG_RGBA_INDEX_ALPHA 3
+
+// iconvg_premul_color is an alpha-premultiplied RGBA color. Alpha-
+// premultiplication means that {0x00, 0xC0, 0x00, 0xC0} represents a
+// 75%-opaque, fully saturated green.
+typedef struct iconvg_premul_color_struct {
+  uint8_t rgba[4];
+} iconvg_premul_color;
+
+// ----
+
 // iconvg_canvas is conceptually a 'virtual super-class' with e.g. Cairo-backed
 // or Skia-backed 'sub-classes'.
 //
@@ -111,17 +130,35 @@ typedef struct iconvg_rectangle_struct {
 // iconvg_canvas_vtable types. Only that iconvg_make_etc_canvas creates a
 // canvas and the iconvg_canvas__etc methods take a canvas as an argument.
 
-struct iconvg_canvas__struct;
+struct iconvg_canvas_struct;
 
-typedef struct iconvg_canvas_vtable__struct {
+typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
-  const char* (*begin_decode)(struct iconvg_canvas__struct*);
-  const char* (*end_decode)(struct iconvg_canvas__struct*, const char* err_msg);
-  const char* (*on_metadata_viewbox)(struct iconvg_canvas__struct*,
+  const char* (*begin_decode)(struct iconvg_canvas_struct* c);
+  const char* (*end_decode)(struct iconvg_canvas_struct* c,
+                            const char* err_msg);
+  const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
+  const char* (*end_path)(struct iconvg_canvas_struct* c);
+  const char* (*path_line_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1);
+  const char* (*path_quad_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1,
+                              float x2,
+                              float y2);
+  const char* (*path_cube_to)(struct iconvg_canvas_struct* c,
+                              float x1,
+                              float y1,
+                              float x2,
+                              float y2,
+                              float x3,
+                              float y3);
+  const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;
 
-typedef struct iconvg_canvas__struct {
+typedef struct iconvg_canvas_struct {
   // vtable defines what 'sub-class' we have.
   const iconvg_canvas_vtable* vtable;
 
@@ -205,6 +242,20 @@ iconvg_rectangle__height(const iconvg_rectangle* self);
 #ifdef ICONVG_IMPLEMENTATION
 // -------------------------------- #include "./aaa_private.h"
 
+#define ICONVG_PRIVATE_TRY(err_msg)                   \
+  do {                                                \
+    const char* iconvg_private_try_err_msg = err_msg; \
+    if (iconvg_private_try_err_msg) {                 \
+      return iconvg_private_try_err_msg;              \
+    }                                                 \
+  } while (false)
+
+// ----
+
+extern const char iconvg_private_internal_error_unreachable[];
+
+// ----
+
 static inline uint16_t  //
 iconvg_private_peek_u16le(const uint8_t* p) {
   return (uint16_t)(((uint16_t)(p[0]) << 0) | ((uint16_t)(p[1]) << 8));
@@ -254,6 +305,13 @@ typedef struct iconvg_private_decoder_struct {
   size_t len;
 } iconvg_private_decoder;
 
+// ----
+
+typedef struct iconvg_private_bank_struct {
+  iconvg_premul_color creg[64];
+  float nreg[64];
+} iconvg_private_bank;
+
 // -------------------------------- #include "./debug.c"
 
 static const char*  //
@@ -291,6 +349,102 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
 }
 
 static const char*  //
+iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%sbegin_path(%g, %g)\n", ((const char*)(c->context_const_ptr)),
+            x0, y0);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->begin_path)(wrapped, x0, y0);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__end_path(iconvg_canvas* c) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%send_path()\n", ((const char*)(c->context_const_ptr)));
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->end_path)(wrapped);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_line_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_line_to(%g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_line_to)(wrapped, x1, y1);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_quad_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_quad_to(%g, %g, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_quad_to)(wrapped, x1, y1, x2, y2);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2,
+                                          float x3,
+                                          float y3) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_cube_to(%g, %g, %g, %g, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2, x3, y3);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_cube_to)(wrapped, x1, y1, x2, y2, x3, y3);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -314,6 +468,11 @@ static const iconvg_canvas_vtable  //
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__begin_path,
+        &iconvg_private_debug_canvas__end_path,
+        &iconvg_private_debug_canvas__path_line_to,
+        &iconvg_private_debug_canvas__path_quad_to,
+        &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 
@@ -387,6 +546,7 @@ iconvg_private_decoder__decode_coordinate_number(iconvg_private_decoder* self,
 
     } else {  // 4-byte encoding.
       if (self->len >= 4) {
+        // TODO: reject NaNs?
         *dst = iconvg_private_reinterpret_from_u32_to_f32(
             0xFFFFFFFCu & iconvg_private_peek_u32le(self->ptr));
         self->ptr += 4;
@@ -456,6 +616,253 @@ iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
 
 // ----
 
+static const char*  //
+iconvg_private_execute_bytecode(iconvg_canvas* c,
+                                iconvg_private_decoder* d,
+                                iconvg_private_bank* b) {
+  // Drawing ops will typically set curr_x and curr_y. They also set x1 and y1
+  // in case the subsequent op is smooth and needs an implicit point.
+  float curr_x = +0.0f;
+  float curr_y = +0.0f;
+  float x1 = +0.0f;
+  float y1 = +0.0f;
+  float x2 = +0.0f;
+  float y2 = +0.0f;
+  float x3 = +0.0f;
+  float y3 = +0.0f;
+
+styling_mode:
+  while (true) {
+    if (d->len == 0) {
+      return NULL;
+    }
+    uint8_t opcode = d->ptr[0];
+    d->ptr += 1;
+    d->len -= 1;
+
+    if (opcode < 0x80) {
+      // TODO: implement.
+      return iconvg_error_bad_styling_opcode;
+
+    } else if (opcode < 0xC0) {
+      // TODO: implement.
+      return iconvg_error_bad_styling_opcode;
+
+    } else if (opcode < 0xC7) {  // Switch to the drawing mode.
+      if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
+          !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+        return iconvg_error_bad_coordinate;
+      }
+      ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+      x1 = curr_x;
+      y1 = curr_y;
+      // TODO: if H is outside the LOD range then skip the drawing.
+      goto drawing_mode;
+
+    } else if (opcode < 0xC8) {  // Set Level of Detail bounds.
+      // TODO: implement.
+      return iconvg_error_bad_styling_opcode;
+    }
+
+    return iconvg_error_bad_styling_opcode;
+  }
+
+drawing_mode:
+  while (true) {
+    if (d->len == 0) {
+      return iconvg_error_bad_path_unfinished;
+    }
+    uint8_t opcode = d->ptr[0];
+    d->ptr += 1;
+    d->len -= 1;
+
+    switch (opcode >> 4) {
+      case 0x00:
+      case 0x01:
+      case 0x02:
+      case 0x03:
+      case 0x04:
+      case 0x05:
+      case 0x06:
+      case 0x07:
+        // TODO: implement.
+        return iconvg_error_bad_drawing_opcode;
+
+      case 0x08: {  // 'S' mnemonic: absolute smooth cube_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+          curr_x = x3;
+          curr_y = y3;
+          x1 = (2 * x3) - x2;
+          y1 = (2 * y3) - y2;
+        }
+        continue;
+      }
+
+      case 0x09: {  // 's' mnemonic: relative smooth cube_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          x2 += curr_x;
+          y2 += curr_y;
+          x3 += curr_x;
+          y3 += curr_y;
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+          curr_x = x3;
+          curr_y = y3;
+          x1 = (2 * x3) - x2;
+          y1 = (2 * y3) - y2;
+        }
+        continue;
+      }
+
+      case 0x0A: {  // 'C' mnemonic: absolute cube_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+          curr_x = x3;
+          curr_y = y3;
+          x1 = (2 * x3) - x2;
+          y1 = (2 * y3) - y2;
+        }
+        continue;
+      }
+
+      case 0x0B: {  // 'c' mnemonic: relative cube_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y2) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          x1 += curr_x;
+          y1 += curr_y;
+          x2 += curr_x;
+          y2 += curr_y;
+          x3 += curr_x;
+          y3 += curr_y;
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+          curr_x = x3;
+          curr_y = y3;
+          x1 = (2 * x3) - x2;
+          y1 = (2 * y3) - y2;
+        }
+        continue;
+      }
+
+      case 0x0C:
+      case 0x0D:
+        // TODO: implement.
+        return iconvg_error_bad_drawing_opcode;
+    }
+
+    switch (opcode) {
+      case 0xE1: {  // 'z' mnemonic: close_path.
+        ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
+        // TODO: call c->vtable->paint.
+        goto styling_mode;
+      }
+
+      case 0xE2: {  // 'z; M' mnemonics: close_path; absolute move_to.
+        ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
+            !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+          return iconvg_error_bad_coordinate;
+        }
+        ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+
+      case 0xE3: {  // 'z; m' mnemonics: close_path; relative move_to.
+        ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+            !iconvg_private_decoder__decode_coordinate_number(d, &y1)) {
+          return iconvg_error_bad_coordinate;
+        }
+        curr_x += x1;
+        curr_y += y1;
+        ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+
+      case 0xE6: {  // 'H' mnemonic: absolute horizontal line_to.
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x)) {
+          return iconvg_error_bad_coordinate;
+        }
+        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+
+      case 0xE7: {  // 'h' mnemonic: relative horizontal line_to.
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &x1)) {
+          return iconvg_error_bad_coordinate;
+        }
+        curr_x += x1;
+        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+
+      case 0xE8: {  // 'V' mnemonic: absolute vertical line_to.
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+          return iconvg_error_bad_coordinate;
+        }
+        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+
+      case 0xE9: {  // 'v' mnemonic: relative vertical line_to.
+        if (!iconvg_private_decoder__decode_coordinate_number(d, &y1)) {
+          return iconvg_error_bad_coordinate;
+        }
+        curr_y += y1;
+        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        x1 = curr_x;
+        y1 = curr_y;
+        continue;
+      }
+    }
+
+    return iconvg_error_bad_drawing_opcode;
+  }
+  return iconvg_private_internal_error_unreachable;
+}
+
+// ----
+
 const char*  //
 iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
                       const uint8_t* src_ptr,
@@ -517,9 +924,15 @@ iconvg_private_decode(iconvg_canvas* c,
                       const uint8_t* src_ptr,
                       size_t src_len) {
   const char* err_msg = NULL;
+
   iconvg_private_decoder d;
   d.ptr = src_ptr;
   d.len = src_len;
+
+  // TODO: custom/suggested palette.
+  iconvg_private_bank b;
+  memset(b.creg, 0x00, sizeof(b.creg));
+  memset(b.nreg, 0x00, sizeof(b.nreg));
 
   if (!iconvg_private_decoder__decode_magic_identifier(&d)) {
     return iconvg_error_bad_magic_identifier;
@@ -581,16 +994,19 @@ iconvg_private_decode(iconvg_canvas* c,
     }
   }
 
-  return NULL;
+  return iconvg_private_execute_bytecode(c, &d, &b);
 }
 
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
               size_t src_len) {
+  iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
   if (!dst_canvas) {
-    return iconvg_error_null_argument;
-  } else if (!dst_canvas->vtable) {
+    dst_canvas = &fallback_canvas;
+  }
+
+  if (!dst_canvas->vtable) {
     return iconvg_error_null_vtable;
   } else if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
              sizeof(iconvg_canvas_vtable)) {
@@ -608,6 +1024,10 @@ iconvg_decode(iconvg_canvas* dst_canvas,
 
 // -------------------------------- #include "./errors.c"
 
+const char iconvg_error_bad_coordinate[] =  //
+    "iconvg: bad coordinate";
+const char iconvg_error_bad_drawing_opcode[] =  //
+    "iconvg: bad drawing opcode";
 const char iconvg_error_bad_magic_identifier[] =  //
     "iconvg: bad magic identifier";
 const char iconvg_error_bad_metadata[] =  //
@@ -616,19 +1036,31 @@ const char iconvg_error_bad_metadata_id_order[] =  //
     "iconvg: bad metadata ID order";
 const char iconvg_error_bad_metadata_viewbox[] =  //
     "iconvg: bad metadata (viewbox)";
-const char iconvg_error_null_argument[] =  //
-    "iconvg: null argument";
+const char iconvg_error_bad_path_unfinished[] =  //
+    "iconvg: bad path (unfinished)";
+const char iconvg_error_bad_styling_opcode[] =  //
+    "iconvg: bad styling opcode";
+
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //
     "iconvg: unsupported vtable";
 
+const char iconvg_private_internal_error_unreachable[] =  //
+    "iconvg: internal error: unreachable";
+
+// ----
+
 bool  //
 iconvg_error_is_file_format_error(const char* err_msg) {
-  return (err_msg == iconvg_error_bad_magic_identifier) ||
+  return (err_msg == iconvg_error_bad_coordinate) ||
+         (err_msg == iconvg_error_bad_drawing_opcode) ||
+         (err_msg == iconvg_error_bad_magic_identifier) ||
          (err_msg == iconvg_error_bad_metadata) ||
          (err_msg == iconvg_error_bad_metadata_id_order) ||
-         (err_msg == iconvg_error_bad_metadata_viewbox);
+         (err_msg == iconvg_error_bad_metadata_viewbox) ||
+         (err_msg == iconvg_error_bad_path_unfinished) ||
+         (err_msg == iconvg_error_bad_styling_opcode);
 }
 
 // -------------------------------- #include "./rectangle.c"

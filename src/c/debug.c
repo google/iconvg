@@ -47,6 +47,102 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c, const char* err_msg) {
 }
 
 static const char*  //
+iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%sbegin_path(%g, %g)\n", ((const char*)(c->context_const_ptr)),
+            x0, y0);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->begin_path)(wrapped, x0, y0);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__end_path(iconvg_canvas* c) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%send_path()\n", ((const char*)(c->context_const_ptr)));
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->end_path)(wrapped);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_line_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_line_to(%g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_line_to)(wrapped, x1, y1);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_quad_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_quad_to(%g, %g, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_quad_to)(wrapped, x1, y1, x2, y2);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2,
+                                          float x3,
+                                          float y3) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_cube_to(%g, %g, %g, %g, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2, x3, y3);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_cube_to)(wrapped, x1, y1, x2, y2, x3, y3);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -70,6 +166,11 @@ static const iconvg_canvas_vtable  //
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__begin_path,
+        &iconvg_private_debug_canvas__end_path,
+        &iconvg_private_debug_canvas__path_line_to,
+        &iconvg_private_debug_canvas__path_quad_to,
+        &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 

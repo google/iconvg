@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define ICONVG_PRIVATE_TRY(err_msg)                   \
+  do {                                                \
+    const char* iconvg_private_try_err_msg = err_msg; \
+    if (iconvg_private_try_err_msg) {                 \
+      return iconvg_private_try_err_msg;              \
+    }                                                 \
+  } while (false)
+
+// ----
+
+extern const char iconvg_private_internal_error_unreachable[];
+
+// ----
+
 static inline uint16_t  //
 iconvg_private_peek_u16le(const uint8_t* p) {
   return (uint16_t)(((uint16_t)(p[0]) << 0) | ((uint16_t)(p[1]) << 8));
@@ -60,3 +74,10 @@ typedef struct iconvg_private_decoder_struct {
   const uint8_t* ptr;
   size_t len;
 } iconvg_private_decoder;
+
+// ----
+
+typedef struct iconvg_private_bank_struct {
+  iconvg_premul_color creg[64];
+  float nreg[64];
+} iconvg_private_bank;
