@@ -156,6 +156,14 @@ typedef struct iconvg_canvas_vtable_struct {
                               float y2,
                               float x3,
                               float y3);
+  const char* (*path_arc_to)(struct iconvg_canvas_struct* c,
+                             float radius_x,
+                             float radius_y,
+                             float x_axis_rotation,
+                             bool large_arc,
+                             bool sweep,
+                             float final_x,
+                             float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;
@@ -447,6 +455,33 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
+iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
+                                         float radius_x,
+                                         float radius_y,
+                                         float x_axis_rotation,
+                                         bool large_arc,
+                                         bool sweep,
+                                         float final_x,
+                                         float final_y) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_arc_to(%g, %g, %g, %d, %d, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), radius_x, radius_y,
+            x_axis_rotation, (int)large_arc, (int)sweep, final_x, final_y);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_arc_to)(wrapped, radius_x, radius_y,
+                                         x_axis_rotation, large_arc, sweep,
+                                         final_x, final_y);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -475,6 +510,7 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_debug_canvas__path_line_to,
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
+        &iconvg_private_debug_canvas__path_arc_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 
@@ -702,6 +738,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float y2 = +0.0f;
   float x3 = +0.0f;
   float y3 = +0.0f;
+  uint32_t flags = 0;
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
@@ -1027,10 +1064,45 @@ drawing_mode:
         continue;
       }
 
-      case 0x0C:
-      case 0x0D:
-        // TODO: implement.
-        return iconvg_error_bad_drawing_opcode;
+      case 0x0C: {  // 'A' mnemonic: absolute arc_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
+              !iconvg_private_decoder__decode_natural_number(d, &flags) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+            return iconvg_error_bad_coordinate;
+          }
+          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
+          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
+              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
+
+      case 0x0D: {  // 'a' mnemonic: relative arc_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
+              !iconvg_private_decoder__decode_natural_number(d, &flags) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
+          curr_x += x3;
+          curr_y += y3;
+          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
+              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
     }
 
     switch (opcode) {

@@ -143,6 +143,33 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
+iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
+                                         float radius_x,
+                                         float radius_y,
+                                         float x_axis_rotation,
+                                         bool large_arc,
+                                         bool sweep,
+                                         float final_x,
+                                         float final_y) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%spath_arc_to(%g, %g, %g, %d, %d, %g, %g)\n",
+            ((const char*)(c->context_const_ptr)), radius_x, radius_y,
+            x_axis_rotation, (int)large_arc, (int)sweep, final_x, final_y);
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->path_arc_to)(wrapped, radius_x, radius_y,
+                                         x_axis_rotation, large_arc, sweep,
+                                         final_x, final_y);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -171,6 +198,7 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_debug_canvas__path_line_to,
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
+        &iconvg_private_debug_canvas__path_arc_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
 };
 

@@ -111,6 +111,14 @@ typedef struct iconvg_canvas_vtable_struct {
                               float y2,
                               float x3,
                               float y3);
+  const char* (*path_arc_to)(struct iconvg_canvas_struct* c,
+                             float radius_x,
+                             float radius_y,
+                             float x_axis_rotation,
+                             bool large_arc,
+                             bool sweep,
+                             float final_x,
+                             float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle viewbox);
 } iconvg_canvas_vtable;

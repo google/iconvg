@@ -221,6 +221,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float y2 = +0.0f;
   float x3 = +0.0f;
   float y3 = +0.0f;
+  uint32_t flags = 0;
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
@@ -546,10 +547,45 @@ drawing_mode:
         continue;
       }
 
-      case 0x0C:
-      case 0x0D:
-        // TODO: implement.
-        return iconvg_error_bad_drawing_opcode;
+      case 0x0C: {  // 'A' mnemonic: absolute arc_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
+              !iconvg_private_decoder__decode_natural_number(d, &flags) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
+            return iconvg_error_bad_coordinate;
+          }
+          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
+          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
+              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
+
+      case 0x0D: {  // 'a' mnemonic: relative arc_to.
+        for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
+              !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
+              !iconvg_private_decoder__decode_natural_number(d, &flags) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &x3) ||
+              !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
+            return iconvg_error_bad_coordinate;
+          }
+          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
+          curr_x += x3;
+          curr_y += y3;
+          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
+              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          x1 = curr_x;
+          y1 = curr_y;
+        }
+        continue;
+      }
     }
 
     switch (opcode) {
