@@ -244,7 +244,16 @@ styling_mode:
       if (d->len < 1) {
         return iconvg_error_bad_color;
       }
-      // TODO: implement.
+      uint8_t* rgba =
+          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      uint8_t u = d->ptr[0];
+      if (u < 0x80) {
+        memcpy(rgba, &iconvg_private_one_byte_colors[4 * ((size_t)u)], 4);
+      } else if (u < 0xC0) {
+        // TODO: implement.
+      } else {
+        // TODO: implement.
+      }
       d->ptr += 1;
       d->len -= 1;
       sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;

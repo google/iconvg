@@ -81,3 +81,7 @@ typedef struct iconvg_private_bank_struct {
   iconvg_premul_color creg[64];
   float nreg[64];
 } iconvg_private_bank;
+
+// ----
+
+extern const uint8_t iconvg_private_one_byte_colors[512];
