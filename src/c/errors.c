@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+const char iconvg_error_bad_color[] =  //
+    "iconvg: bad color";
 const char iconvg_error_bad_coordinate[] =  //
     "iconvg: bad coordinate";
 const char iconvg_error_bad_drawing_opcode[] =  //
@@ -43,7 +45,8 @@ const char iconvg_private_internal_error_unreachable[] =  //
 
 bool  //
 iconvg_error_is_file_format_error(const char* err_msg) {
-  return (err_msg == iconvg_error_bad_coordinate) ||
+  return (err_msg == iconvg_error_bad_color) ||
+         (err_msg == iconvg_error_bad_coordinate) ||
          (err_msg == iconvg_error_bad_drawing_opcode) ||
          (err_msg == iconvg_error_bad_magic_identifier) ||
          (err_msg == iconvg_error_bad_metadata) ||

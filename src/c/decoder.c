@@ -143,6 +143,40 @@ iconvg_private_decoder__decode_real_number(iconvg_private_decoder* self,
   return false;
 }
 
+static bool  //
+iconvg_private_decoder__decode_zero_to_one_number(iconvg_private_decoder* self,
+                                                  float* dst) {
+  if (self->len >= 1) {
+    uint8_t v = self->ptr[0];
+    if ((v & 0x01) == 0) {  // 1-byte encoding.
+      *dst = (float)(((double)(v >> 1)) / 120.0);
+      self->ptr += 1;
+      self->len -= 1;
+      return true;
+
+    } else if ((v & 0x02) == 0) {  // 2-byte encoding.
+      if (self->len >= 2) {
+        *dst = (float)(((double)(iconvg_private_peek_u16le(self->ptr) >> 2)) /
+                       15120.0);
+        self->ptr += 2;
+        self->len -= 2;
+        return true;
+      }
+
+    } else {  // 4-byte encoding.
+      if (self->len >= 4) {
+        // TODO: reject NaNs?
+        *dst = iconvg_private_reinterpret_from_u32_to_f32(
+            0xFFFFFFFCu & iconvg_private_peek_u32le(self->ptr));
+        self->ptr += 4;
+        self->len -= 4;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ----
 
 static bool  //
@@ -174,6 +208,9 @@ static const char*  //
 iconvg_private_execute_bytecode(iconvg_canvas* c,
                                 iconvg_private_decoder* d,
                                 iconvg_private_bank* b) {
+  // adjustments are the ADJ values from the IconVG spec.
+  static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
+
   // Drawing ops will typically set curr_x and curr_y. They also set x1 and y1
   // in case the subsequent op is smooth and needs an implicit point.
   float curr_x = +0.0f;
@@ -185,6 +222,8 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float x3 = +0.0f;
   float y3 = +0.0f;
 
+  // sel[0] and sel[1] are the CSEL and NSEL registers.
+  uint32_t sel[2] = {0};
   float lod[2] = {0};
 
 styling_mode:
@@ -197,12 +236,97 @@ styling_mode:
     d->len -= 1;
 
     if (opcode < 0x80) {
-      // TODO: implement.
-      return iconvg_error_bad_styling_opcode;
+      sel[opcode >> 6] = opcode & 0x3F;
+      continue;
 
-    } else if (opcode < 0xC0) {
+    } else if (opcode < 0x88) {  // Set CREG[etc]; 1 byte color.
+      if (d->len < 1) {
+        return iconvg_error_bad_color;
+      }
       // TODO: implement.
-      return iconvg_error_bad_styling_opcode;
+      d->ptr += 1;
+      d->len -= 1;
+      sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0x90) {  // Set CREG[etc]; 2 byte color.
+      if (d->len < 2) {
+        return iconvg_error_bad_color;
+      }
+      uint8_t* rgba =
+          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      rgba[0] = 0x11 * (d->ptr[0] >> 4);
+      rgba[1] = 0x11 * (d->ptr[0] & 0x0F);
+      rgba[2] = 0x11 * (d->ptr[1] >> 4);
+      rgba[3] = 0x11 * (d->ptr[1] & 0x0F);
+      d->ptr += 2;
+      d->len -= 2;
+      sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0x98) {  // Set CREG[etc]; 3 byte (direct) color.
+      if (d->len < 3) {
+        return iconvg_error_bad_color;
+      }
+      uint8_t* rgba =
+          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      rgba[0] = d->ptr[0];
+      rgba[1] = d->ptr[1];
+      rgba[2] = d->ptr[2];
+      rgba[3] = 0xFF;
+      d->ptr += 3;
+      d->len -= 3;
+      sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0xA0) {  // Set CREG[etc]; 4 byte color.
+      if (d->len < 4) {
+        return iconvg_error_bad_color;
+      }
+      uint8_t* rgba =
+          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      rgba[0] = d->ptr[0];
+      rgba[1] = d->ptr[1];
+      rgba[2] = d->ptr[2];
+      rgba[3] = d->ptr[3];
+      d->ptr += 4;
+      d->len -= 4;
+      sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0xA8) {  // Set CREG[etc]; 3 byte (indirect) color.
+      if (d->len < 3) {
+        return iconvg_error_bad_color;
+      }
+      // TODO: implement.
+      d->ptr += 3;
+      d->len -= 3;
+      sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0xB0) {  // Set NREG[etc]; real number.
+      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      if (!iconvg_private_decoder__decode_real_number(d, num)) {
+        return iconvg_error_bad_number;
+      }
+      sel[1] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0xB8) {  // Set NREG[etc]; coordinate number.
+      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      if (!iconvg_private_decoder__decode_coordinate_number(d, num)) {
+        return iconvg_error_bad_coordinate;
+      }
+      sel[1] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
+
+    } else if (opcode < 0xC0) {  // Set NREG[etc]; zero-to-one number.
+      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      if (!iconvg_private_decoder__decode_zero_to_one_number(d, num)) {
+        return iconvg_error_bad_number;
+      }
+      sel[1] += ((opcode & 0x07) == 0x07) ? 1 : 0;
+      continue;
 
     } else if (opcode < 0xC7) {  // Switch to the drawing mode.
       if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||

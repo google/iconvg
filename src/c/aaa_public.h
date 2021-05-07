@@ -28,6 +28,7 @@
 // Other errors (invalid_etc, null_etc, unsupported_etc) are typically
 // programming errors instead of file format errors.
 
+extern const char iconvg_error_bad_color[];
 extern const char iconvg_error_bad_coordinate[];
 extern const char iconvg_error_bad_drawing_opcode[];
 extern const char iconvg_error_bad_magic_identifier[];
