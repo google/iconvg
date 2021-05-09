@@ -194,6 +194,44 @@ iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
   return (*wrapped->vtable->on_metadata_viewbox)(wrapped, viewbox);
 }
 
+static const char*  //
+iconvg_private_debug_canvas__on_metadata_suggested_palette(
+    iconvg_canvas* c,
+    const iconvg_palette* suggested_palette) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    int j = iconvg_private_last_color_that_isnt_opaque_black(suggested_palette);
+    if (j < 0) {
+      fprintf(f, "%son_metadata_suggested_palette(...)\n",
+              ((const char*)(c->context_const_ptr)));
+    } else {
+      fprintf(f, "%son_metadata_suggested_palette(",
+              ((const char*)(c->context_const_ptr)));
+      for (int i = 0; i <= j; i++) {
+        fprintf(f, "%02X:%02X:%02X:%02X%s",
+                suggested_palette->colors[i].rgba[0],
+                suggested_palette->colors[i].rgba[1],
+                suggested_palette->colors[i].rgba[2],
+                suggested_palette->colors[i].rgba[3], (i < 63) ? ", " : ")\n");
+      }
+      if (j < 63) {
+        fprintf(f, "...)\n");
+      } else {
+        fprintf(f, ")\n");
+      }
+    }
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->on_metadata_suggested_palette)(wrapped,
+                                                           suggested_palette);
+}
+
 static const iconvg_canvas_vtable  //
     iconvg_private_debug_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
@@ -206,6 +244,7 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__path_arc_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
+        &iconvg_private_debug_canvas__on_metadata_suggested_palette,
 };
 
 iconvg_canvas  //

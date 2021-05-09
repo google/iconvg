@@ -34,6 +34,7 @@ extern const char iconvg_error_bad_drawing_opcode[];
 extern const char iconvg_error_bad_magic_identifier[];
 extern const char iconvg_error_bad_metadata[];
 extern const char iconvg_error_bad_metadata_id_order[];
+extern const char iconvg_error_bad_metadata_suggested_palette[];
 extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
@@ -155,6 +156,9 @@ typedef struct iconvg_canvas_vtable_struct {
                              float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle viewbox);
+  const char* (*on_metadata_suggested_palette)(
+      struct iconvg_canvas_struct* c,
+      const iconvg_palette* suggested_palette);
 } iconvg_canvas_vtable;
 
 typedef struct iconvg_canvas_struct {

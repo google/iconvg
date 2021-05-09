@@ -202,6 +202,75 @@ iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
          iconvg_private_decoder__decode_coordinate_number(self, &dst->max_y);
 }
 
+static bool  //
+iconvg_private_decoder__decode_metadata_suggested_palette(
+    iconvg_private_decoder* self,
+    iconvg_palette* dst) {
+  if (self->len == 0) {
+    return false;
+  }
+  uint8_t spec = self->ptr[0];
+  self->ptr += 1;
+  self->len -= 1;
+
+  size_t n = 1 + (spec & 0x3F);
+  size_t bytes_per_elem = 1 + (spec >> 6);
+  if (self->len != (n * bytes_per_elem)) {
+    return false;
+  }
+  const uint8_t* p = self->ptr;
+  self->ptr += self->len;
+  self->len = 0;
+
+  iconvg_premul_color* c = &dst->colors[0];
+  switch (bytes_per_elem) {
+    case 1:
+      for (; n > 0; n--) {
+        uint8_t u = *p++;
+        uint32_t rgba =
+            (u < 0x80) ? iconvg_private_peek_u32le(
+                             &iconvg_private_one_byte_colors[4 * ((size_t)u)])
+                       : 0xFF000000u;
+        iconvg_private_poke_u32le(&c->rgba[0], rgba);
+        c++;
+      }
+      break;
+
+    case 2:
+      for (; n > 0; n--) {
+        uint8_t rg = *p++;
+        c->rgba[0] = 0x11 * (rg >> 4);
+        c->rgba[1] = 0x11 * (rg & 0x0F);
+        uint8_t ba = *p++;
+        c->rgba[2] = 0x11 * (ba >> 4);
+        c->rgba[3] = 0x11 * (ba & 0x0F);
+        c++;
+      }
+      break;
+
+    case 3:
+      for (; n > 0; n--) {
+        c->rgba[0] = *p++;
+        c->rgba[1] = *p++;
+        c->rgba[2] = *p++;
+        c->rgba[3] = 0xFF;
+        c++;
+      }
+      break;
+
+    case 4:
+      for (; n > 0; n--) {
+        c->rgba[0] = *p++;
+        c->rgba[1] = *p++;
+        c->rgba[2] = *p++;
+        c->rgba[3] = *p++;
+        c++;
+      }
+      break;
+  }
+  return true;
+}
+
 // ----
 
 static const char*  //
@@ -735,12 +804,9 @@ static const char*  //
 iconvg_private_decode(iconvg_canvas* c,
                       iconvg_private_decoder* d,
                       const iconvg_decode_options* options) {
-  const char* err_msg = NULL;
-
+  iconvg_rectangle viewbox = iconvg_private_default_viewbox();
   iconvg_palette custom_palette;
-  memcpy(&custom_palette,
-         (options && options->palette) ? options->palette
-                                       : &iconvg_private_default_palette,
+  memcpy(&custom_palette, &iconvg_private_default_palette,
          sizeof(custom_palette));
 
   if (!iconvg_private_decoder__decode_magic_identifier(d)) {
@@ -751,7 +817,6 @@ iconvg_private_decode(iconvg_canvas* c,
     return iconvg_error_bad_metadata;
   }
 
-  bool use_default_viewbox = true;
   int32_t previous_metadata_id = -1;
   for (; num_metadata_chunks > 0; num_metadata_chunks--) {
     uint32_t chunk_length;
@@ -768,24 +833,25 @@ iconvg_private_decode(iconvg_canvas* c,
       return iconvg_error_bad_metadata_id_order;
     }
 
-    if (metadata_id == 0) {  // MID 0 (ViewBox).
-      use_default_viewbox = false;
-      iconvg_rectangle r;
-      if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
-          (chunk.len != 0)) {
-        return iconvg_error_bad_metadata_viewbox;
-      }
-      err_msg = (*c->vtable->on_metadata_viewbox)(c, r);
-      if (err_msg) {
-        return err_msg;
-      }
-    } else if ((metadata_id > 0) && use_default_viewbox) {
-      use_default_viewbox = false;
-      err_msg = (*c->vtable->on_metadata_viewbox)(
-          c, iconvg_private_default_viewbox());
-      if (err_msg) {
-        return err_msg;
-      }
+    switch (metadata_id) {
+      case 0:  // MID 0 (ViewBox).
+        if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk,
+                                                             &viewbox) ||
+            (chunk.len != 0)) {
+          return iconvg_error_bad_metadata_viewbox;
+        }
+        break;
+
+      case 1:  // MID 1 (Suggested Palette).
+        if (!iconvg_private_decoder__decode_metadata_suggested_palette(
+                &chunk, &custom_palette) ||
+            (chunk.len != 0)) {
+          return iconvg_error_bad_metadata_suggested_palette;
+        }
+        break;
+
+      default:
+        return iconvg_error_bad_metadata;
     }
 
     iconvg_private_decoder__skip_to_the_end(&chunk);
@@ -793,13 +859,12 @@ iconvg_private_decode(iconvg_canvas* c,
     previous_metadata_id = ((int32_t)metadata_id);
   }
 
-  if (use_default_viewbox) {
-    use_default_viewbox = false;
-    err_msg =
-        (*c->vtable->on_metadata_viewbox)(c, iconvg_private_default_viewbox());
-    if (err_msg) {
-      return err_msg;
-    }
+  ICONVG_PRIVATE_TRY((*c->vtable->on_metadata_viewbox)(c, viewbox));
+  ICONVG_PRIVATE_TRY(
+      (*c->vtable->on_metadata_suggested_palette)(c, &custom_palette));
+
+  if (options && options->palette) {
+    memcpy(&custom_palette, options->palette, sizeof(custom_palette));
   }
 
   iconvg_palette creg;

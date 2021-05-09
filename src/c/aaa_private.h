@@ -106,3 +106,17 @@ iconvg_private_set_one_byte_color(uint8_t* dst,
         dst, iconvg_private_peek_u32le(&creg->colors[u & 0x3F].rgba[0]));
   }
 }
+
+// ----
+
+static inline int  //
+iconvg_private_last_color_that_isnt_opaque_black(
+    const iconvg_palette* palette) {
+  int i = 63;
+  for (; i >= 0; i--) {
+    if (iconvg_private_peek_u32le(&palette->colors[i].rgba[0]) != 0xFF000000u) {
+      break;
+    }
+  }
+  return i;
+}
