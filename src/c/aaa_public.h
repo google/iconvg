@@ -48,18 +48,18 @@ iconvg_error_is_file_format_error(const char* err_msg);
 
 // ----
 
-// iconvg_rectangle is an axis-aligned rectangle with float32 co-ordinates.
+// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 co-ordinates.
 //
 // It is valid for a minimum co-ordinate to be greater than or equal to the
 // corresponding maximum, or for any co-ordinate to be NaN, in which case the
 // rectangle is empty. There are multiple ways to represent an empty rectangle
 // but the canonical representation has all fields set to positive zero.
-typedef struct iconvg_rectangle_struct {
+typedef struct iconvg_rectangle_f32_struct {
   float min_x;
   float min_y;
   float max_x;
   float max_y;
-} iconvg_rectangle;
+} iconvg_rectangle_f32;
 
 // ----
 
@@ -155,7 +155,7 @@ typedef struct iconvg_canvas_vtable_struct {
                              float final_x,
                              float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
-                                     iconvg_rectangle viewbox);
+                                     iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
       struct iconvg_canvas_struct* c,
       const iconvg_palette* suggested_palette);
@@ -229,17 +229,17 @@ iconvg_decode(iconvg_canvas* dst_canvas,
 // dst_viewbox may be NULL, in which case the function merely validates src's
 // ViewBox.
 const char*  //
-iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
+iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len);
 
-// iconvg_rectangle__width returns self's width.
+// iconvg_rectangle_f32__width returns self's width.
 float  //
-iconvg_rectangle__width(const iconvg_rectangle* self);
+iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self);
 
-// iconvg_rectangle__height returns self's height.
+// iconvg_rectangle_f32__height returns self's height.
 float  //
-iconvg_rectangle__height(const iconvg_rectangle* self);
+iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"

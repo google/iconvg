@@ -66,9 +66,9 @@ iconvg_private_canvas_sizeof_vtable(iconvg_canvas* c) {
 
 // ----
 
-static inline iconvg_rectangle  //
+static inline iconvg_rectangle_f32  //
 iconvg_private_default_viewbox() {
-  iconvg_rectangle r;
+  iconvg_rectangle_f32 r;
   r.min_x = -32.0f;
   r.min_y = -32.0f;
   r.max_x = +32.0f;

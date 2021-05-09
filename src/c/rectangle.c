@@ -13,7 +13,7 @@
 // limitations under the License.
 
 float  //
-iconvg_rectangle__width(const iconvg_rectangle* self) {
+iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self) {
   // Note that max_x or min_x may be NaN.
   if (self && (self->max_x > self->min_x)) {
     return self->max_x - self->min_x;
@@ -22,7 +22,7 @@ iconvg_rectangle__width(const iconvg_rectangle* self) {
 }
 
 float  //
-iconvg_rectangle__height(const iconvg_rectangle* self) {
+iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self) {
   // Note that max_y or min_y may be NaN.
   if (self && (self->max_y > self->min_y)) {
     return self->max_y - self->min_y;

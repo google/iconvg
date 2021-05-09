@@ -131,7 +131,7 @@ main(int argc, char** argv) {
 
   // Decode the IconVG viewbox.
   {
-    iconvg_rectangle viewbox = {};
+    iconvg_rectangle_f32 viewbox = {};
     const char* err_msg = iconvg_decode_viewbox(&viewbox, src_ptr, src_len);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,

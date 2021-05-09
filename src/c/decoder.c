@@ -195,7 +195,7 @@ iconvg_private_decoder__decode_magic_identifier(iconvg_private_decoder* self) {
 
 static bool  //
 iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
-                                                iconvg_rectangle* dst) {
+                                                iconvg_rectangle_f32* dst) {
   return iconvg_private_decoder__decode_coordinate_number(self, &dst->min_x) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->min_y) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->max_x) &&
@@ -759,7 +759,7 @@ drawing_mode:
 // ----
 
 const char*  //
-iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
+iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len) {
   iconvg_private_decoder d;
@@ -794,7 +794,7 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
 
     if (metadata_id == 0) {  // MID 0 (ViewBox).
       use_default_viewbox = false;
-      iconvg_rectangle r;
+      iconvg_rectangle_f32 r;
       if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
           (chunk.len != 0)) {
         return iconvg_error_bad_metadata_viewbox;
@@ -818,7 +818,7 @@ static const char*  //
 iconvg_private_decode(iconvg_canvas* c,
                       iconvg_private_decoder* d,
                       const iconvg_decode_options* options) {
-  iconvg_rectangle viewbox = iconvg_private_default_viewbox();
+  iconvg_rectangle_f32 viewbox = iconvg_private_default_viewbox();
   iconvg_palette custom_palette;
   memcpy(&custom_palette, &iconvg_private_default_palette,
          sizeof(custom_palette));

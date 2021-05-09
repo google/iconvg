@@ -177,7 +177,7 @@ iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
 
 static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
-                                                 iconvg_rectangle viewbox) {
+                                                 iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
     fprintf(f, "%son_metadata_viewbox({%g, %g, %g, %g})\n",

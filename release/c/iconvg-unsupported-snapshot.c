@@ -94,18 +94,18 @@ iconvg_error_is_file_format_error(const char* err_msg);
 
 // ----
 
-// iconvg_rectangle is an axis-aligned rectangle with float32 co-ordinates.
+// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 co-ordinates.
 //
 // It is valid for a minimum co-ordinate to be greater than or equal to the
 // corresponding maximum, or for any co-ordinate to be NaN, in which case the
 // rectangle is empty. There are multiple ways to represent an empty rectangle
 // but the canonical representation has all fields set to positive zero.
-typedef struct iconvg_rectangle_struct {
+typedef struct iconvg_rectangle_f32_struct {
   float min_x;
   float min_y;
   float max_x;
   float max_y;
-} iconvg_rectangle;
+} iconvg_rectangle_f32;
 
 // ----
 
@@ -201,7 +201,7 @@ typedef struct iconvg_canvas_vtable_struct {
                              float final_x,
                              float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
-                                     iconvg_rectangle viewbox);
+                                     iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
       struct iconvg_canvas_struct* c,
       const iconvg_palette* suggested_palette);
@@ -275,17 +275,17 @@ iconvg_decode(iconvg_canvas* dst_canvas,
 // dst_viewbox may be NULL, in which case the function merely validates src's
 // ViewBox.
 const char*  //
-iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
+iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len);
 
-// iconvg_rectangle__width returns self's width.
+// iconvg_rectangle_f32__width returns self's width.
 float  //
-iconvg_rectangle__width(const iconvg_rectangle* self);
+iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self);
 
-// iconvg_rectangle__height returns self's height.
+// iconvg_rectangle_f32__height returns self's height.
 float  //
-iconvg_rectangle__height(const iconvg_rectangle* self);
+iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -348,9 +348,9 @@ iconvg_private_canvas_sizeof_vtable(iconvg_canvas* c) {
 
 // ----
 
-static inline iconvg_rectangle  //
+static inline iconvg_rectangle_f32  //
 iconvg_private_default_viewbox() {
-  iconvg_rectangle r;
+  iconvg_rectangle_f32 r;
   r.min_x = -32.0f;
   r.min_y = -32.0f;
   r.max_x = +32.0f;
@@ -770,7 +770,7 @@ iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
 
 static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
-                                                 iconvg_rectangle viewbox) {
+                                                 iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
     fprintf(f, "%son_metadata_viewbox({%g, %g, %g, %g})\n",
@@ -1038,7 +1038,7 @@ iconvg_private_decoder__decode_magic_identifier(iconvg_private_decoder* self) {
 
 static bool  //
 iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
-                                                iconvg_rectangle* dst) {
+                                                iconvg_rectangle_f32* dst) {
   return iconvg_private_decoder__decode_coordinate_number(self, &dst->min_x) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->min_y) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->max_x) &&
@@ -1602,7 +1602,7 @@ drawing_mode:
 // ----
 
 const char*  //
-iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
+iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len) {
   iconvg_private_decoder d;
@@ -1637,7 +1637,7 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
 
     if (metadata_id == 0) {  // MID 0 (ViewBox).
       use_default_viewbox = false;
-      iconvg_rectangle r;
+      iconvg_rectangle_f32 r;
       if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk, &r) ||
           (chunk.len != 0)) {
         return iconvg_error_bad_metadata_viewbox;
@@ -1661,7 +1661,7 @@ static const char*  //
 iconvg_private_decode(iconvg_canvas* c,
                       iconvg_private_decoder* d,
                       const iconvg_decode_options* options) {
-  iconvg_rectangle viewbox = iconvg_private_default_viewbox();
+  iconvg_rectangle_f32 viewbox = iconvg_private_default_viewbox();
   iconvg_palette custom_palette;
   memcpy(&custom_palette, &iconvg_private_default_palette,
          sizeof(custom_palette));
@@ -1819,7 +1819,7 @@ iconvg_error_is_file_format_error(const char* err_msg) {
 // -------------------------------- #include "./rectangle.c"
 
 float  //
-iconvg_rectangle__width(const iconvg_rectangle* self) {
+iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self) {
   // Note that max_x or min_x may be NaN.
   if (self && (self->max_x > self->min_x)) {
     return self->max_x - self->min_x;
@@ -1828,7 +1828,7 @@ iconvg_rectangle__width(const iconvg_rectangle* self) {
 }
 
 float  //
-iconvg_rectangle__height(const iconvg_rectangle* self) {
+iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self) {
   // Note that max_y or min_y may be NaN.
   if (self && (self->max_y > self->min_y)) {
     return self->max_y - self->min_y;
