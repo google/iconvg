@@ -27,8 +27,9 @@
 // ---------------- Version
 
 // This section deals with library versions (also known as API versions), which
-// are different from file format versions. For example, library versions 3.0.1
-// and 4.2.0 could have incompatible API but still speak the same file format.
+// are different from file format versions (FFVs). For example, library
+// versions 3.0.1 and 4.2.0 could have incompatible API but still speak the
+// same file format.
 
 // ICONVG_LIBRARY_VERSION is major.minor.patch, as per https://semver.org/, as
 // a uint64_t. The major number is the high 32 bits. The minor number is the
@@ -118,6 +119,38 @@ typedef struct iconvg_rectangle_struct {
 typedef struct iconvg_premul_color_struct {
   uint8_t rgba[4];
 } iconvg_premul_color;
+
+// iconvg_palette is a list of 64 alpha-premultiplied RGBA colors.
+typedef struct iconvg_palette_struct {
+  iconvg_premul_color colors[64];
+} iconvg_palette;
+
+// ----
+
+// iconvg_decode_options holds the optional arguments to iconvg_decode.
+typedef struct iconvg_decode_options_struct {
+  // sizeof__iconvg_decode_options should be set to the sizeof this data
+  // structure. An explicit value allows different library versions to work
+  // together when dynamically linked. Newer library versions will only append
+  // fields, never remove or re-arrange old fields. If the caller has a newer
+  // library version, newer fields will be ignored. If the callee has a newer
+  // library version, missing fields will assume the implicit default values.
+  size_t sizeof__iconvg_decode_options;
+
+  // palette, if non-NULL, is the custom palette used for rendering. If NULL,
+  // the IconVG file's suggested palette is used instead.
+  iconvg_palette* palette;
+} iconvg_decode_options;
+
+// iconvg_make_decode_options_ffv1 returns an iconvg_decode_options suitable
+// for FFV (file format version) 1.
+static inline iconvg_decode_options  //
+iconvg_make_decode_options_ffv1(iconvg_palette* palette) {
+  iconvg_decode_options o = {0};
+  o.sizeof__iconvg_decode_options = sizeof(iconvg_decode_options);
+  o.palette = palette;
+  return o;
+}
 
 // ----
 
@@ -221,10 +254,13 @@ iconvg_make_debug_canvas(FILE* f,
 // non-NULL error is encountered, whether a file format error or a callback
 // error. This non-NULL error becomes the err_msg argument to end_decode and
 // this function, iconvg_decode, returns whatever end_decode returns.
+//
+// options may be NULL, in which case default values will be used.
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
-              size_t src_len);
+              size_t src_len,
+              const iconvg_decode_options* options);
 
 // iconvg_decode_viewbox sets *dst_viewbox to the ViewBox Metadata from the src
 // IconVG-formatted data.
@@ -279,6 +315,14 @@ iconvg_private_peek_u32le(const uint8_t* p) {
          ((uint32_t)(p[2]) << 16) | ((uint32_t)(p[3]) << 24);
 }
 
+static inline void  //
+iconvg_private_poke_u32le(uint8_t* p, uint32_t x) {
+  p[0] = (uint8_t)(x >> 24);
+  p[1] = (uint8_t)(x >> 16);
+  p[2] = (uint8_t)(x >> 8);
+  p[3] = (uint8_t)(x >> 0);
+}
+
 static inline float  //
 iconvg_private_reinterpret_from_u32_to_f32(uint32_t u) {
   float f = 0;
@@ -319,14 +363,27 @@ typedef struct iconvg_private_decoder_struct {
 
 // ----
 
-typedef struct iconvg_private_bank_struct {
-  iconvg_premul_color creg[64];
-  float nreg[64];
-} iconvg_private_bank;
-
-// ----
-
 extern const uint8_t iconvg_private_one_byte_colors[512];
+extern const iconvg_palette iconvg_private_default_palette;
+
+static inline void  //
+iconvg_private_set_one_byte_color(uint8_t* dst,
+                                  const iconvg_palette* custom_palette,
+                                  const iconvg_palette* creg,
+                                  uint8_t u) {
+  if (u < 0x80) {
+    iconvg_private_poke_u32le(
+        dst, iconvg_private_peek_u32le(
+                 &iconvg_private_one_byte_colors[4 * ((size_t)u)]));
+  } else if (u < 0xC0) {
+    iconvg_private_poke_u32le(
+        dst,
+        iconvg_private_peek_u32le(&custom_palette->colors[u & 0x3F].rgba[0]));
+  } else {
+    iconvg_private_poke_u32le(
+        dst, iconvg_private_peek_u32le(&creg->colors[u & 0x3F].rgba[0]));
+  }
+}
 
 // -------------------------------- #include "./colors.c"
 
@@ -460,6 +517,73 @@ const uint8_t iconvg_private_one_byte_colors[512] = {
     0x80, 0x80, 0x80, 0x80,  //
     0x00, 0x00, 0x00, 0x00,  //
 };
+
+const iconvg_palette iconvg_private_default_palette = {{
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+    {{0x00, 0x00, 0x00, 0xFF}},  //
+}};
 
 // -------------------------------- #include "./debug.c"
 
@@ -869,7 +993,9 @@ iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
 static const char*  //
 iconvg_private_execute_bytecode(iconvg_canvas* c,
                                 iconvg_private_decoder* d,
-                                iconvg_private_bank* b) {
+                                const iconvg_palette* custom_palette,
+                                iconvg_palette* creg,
+                                float* nreg) {
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
 
@@ -907,15 +1033,8 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
-      uint8_t u = d->ptr[0];
-      if (u < 0x80) {
-        memcpy(rgba, &iconvg_private_one_byte_colors[4 * ((size_t)u)], 4);
-      } else if (u < 0xC0) {
-        // TODO: implement.
-      } else {
-        // TODO: implement.
-      }
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      iconvg_private_set_one_byte_color(rgba, custom_palette, creg, d->ptr[0]);
       d->ptr += 1;
       d->len -= 1;
       sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
@@ -926,7 +1045,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = 0x11 * (d->ptr[0] >> 4);
       rgba[1] = 0x11 * (d->ptr[0] & 0x0F);
       rgba[2] = 0x11 * (d->ptr[1] >> 4);
@@ -941,7 +1060,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -956,7 +1075,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -977,7 +1096,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xB0) {  // Set NREG[etc]; real number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_real_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -985,7 +1104,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xB8) {  // Set NREG[etc]; coordinate number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_coordinate_number(d, num)) {
         return iconvg_error_bad_coordinate;
       }
@@ -993,7 +1112,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xC0) {  // Set NREG[etc]; zero-to-one number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_zero_to_one_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -1399,13 +1518,16 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
 }
 
 static const char*  //
-iconvg_private_decode(iconvg_canvas* c, iconvg_private_decoder* d) {
+iconvg_private_decode(iconvg_canvas* c,
+                      iconvg_private_decoder* d,
+                      const iconvg_decode_options* options) {
   const char* err_msg = NULL;
 
-  // TODO: custom/suggested palette.
-  iconvg_private_bank b;
-  memset(b.creg, 0x00, sizeof(b.creg));
-  memset(b.nreg, 0x00, sizeof(b.nreg));
+  iconvg_palette custom_palette;
+  memcpy(&custom_palette,
+         (options && options->palette) ? options->palette
+                                       : &iconvg_private_default_palette,
+         sizeof(custom_palette));
 
   if (!iconvg_private_decoder__decode_magic_identifier(d)) {
     return iconvg_error_bad_magic_identifier;
@@ -1466,13 +1588,21 @@ iconvg_private_decode(iconvg_canvas* c, iconvg_private_decoder* d) {
     }
   }
 
-  return iconvg_private_execute_bytecode(c, d, &b);
+  iconvg_palette creg;
+  memcpy(&creg, &custom_palette, sizeof(creg));
+
+  float nreg[64];
+  memset(&nreg[0], 0, sizeof(nreg));
+
+  return iconvg_private_execute_bytecode(c, d, &custom_palette, &creg,
+                                         &nreg[0]);
 }
 
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
-              size_t src_len) {
+              size_t src_len,
+              const iconvg_decode_options* options) {
   iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
   if (!dst_canvas) {
     dst_canvas = &fallback_canvas;
@@ -1494,7 +1624,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
 
   const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
   if (!err_msg) {
-    err_msg = iconvg_private_decode(dst_canvas, &d);
+    err_msg = iconvg_private_decode(dst_canvas, &d, options);
   }
   return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg, src_len - d.len,
                                            d.len);

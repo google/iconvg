@@ -207,7 +207,9 @@ iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
 static const char*  //
 iconvg_private_execute_bytecode(iconvg_canvas* c,
                                 iconvg_private_decoder* d,
-                                iconvg_private_bank* b) {
+                                const iconvg_palette* custom_palette,
+                                iconvg_palette* creg,
+                                float* nreg) {
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
 
@@ -245,15 +247,8 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
-      uint8_t u = d->ptr[0];
-      if (u < 0x80) {
-        memcpy(rgba, &iconvg_private_one_byte_colors[4 * ((size_t)u)], 4);
-      } else if (u < 0xC0) {
-        // TODO: implement.
-      } else {
-        // TODO: implement.
-      }
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+      iconvg_private_set_one_byte_color(rgba, custom_palette, creg, d->ptr[0]);
       d->ptr += 1;
       d->len -= 1;
       sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
@@ -264,7 +259,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = 0x11 * (d->ptr[0] >> 4);
       rgba[1] = 0x11 * (d->ptr[0] & 0x0F);
       rgba[2] = 0x11 * (d->ptr[1] >> 4);
@@ -279,7 +274,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -294,7 +289,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t* rgba =
-          &b->creg[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
+          &creg->colors[(sel[0] - adjustments[opcode & 0x07]) & 0x3F].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -315,7 +310,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xB0) {  // Set NREG[etc]; real number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_real_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -323,7 +318,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xB8) {  // Set NREG[etc]; coordinate number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_coordinate_number(d, num)) {
         return iconvg_error_bad_coordinate;
       }
@@ -331,7 +326,7 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xC0) {  // Set NREG[etc]; zero-to-one number.
-      float* num = &b->nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
+      float* num = &nreg[(sel[1] - adjustments[opcode & 0x07]) & 0x3F];
       if (!iconvg_private_decoder__decode_zero_to_one_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -737,13 +732,16 @@ iconvg_decode_viewbox(iconvg_rectangle* dst_viewbox,
 }
 
 static const char*  //
-iconvg_private_decode(iconvg_canvas* c, iconvg_private_decoder* d) {
+iconvg_private_decode(iconvg_canvas* c,
+                      iconvg_private_decoder* d,
+                      const iconvg_decode_options* options) {
   const char* err_msg = NULL;
 
-  // TODO: custom/suggested palette.
-  iconvg_private_bank b;
-  memset(b.creg, 0x00, sizeof(b.creg));
-  memset(b.nreg, 0x00, sizeof(b.nreg));
+  iconvg_palette custom_palette;
+  memcpy(&custom_palette,
+         (options && options->palette) ? options->palette
+                                       : &iconvg_private_default_palette,
+         sizeof(custom_palette));
 
   if (!iconvg_private_decoder__decode_magic_identifier(d)) {
     return iconvg_error_bad_magic_identifier;
@@ -804,13 +802,21 @@ iconvg_private_decode(iconvg_canvas* c, iconvg_private_decoder* d) {
     }
   }
 
-  return iconvg_private_execute_bytecode(c, d, &b);
+  iconvg_palette creg;
+  memcpy(&creg, &custom_palette, sizeof(creg));
+
+  float nreg[64];
+  memset(&nreg[0], 0, sizeof(nreg));
+
+  return iconvg_private_execute_bytecode(c, d, &custom_palette, &creg,
+                                         &nreg[0]);
 }
 
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
-              size_t src_len) {
+              size_t src_len,
+              const iconvg_decode_options* options) {
   iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
   if (!dst_canvas) {
     dst_canvas = &fallback_canvas;
@@ -832,7 +838,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
 
   const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
   if (!err_msg) {
-    err_msg = iconvg_private_decode(dst_canvas, &d);
+    err_msg = iconvg_private_decode(dst_canvas, &d, options);
   }
   return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg, src_len - d.len,
                                            d.len);

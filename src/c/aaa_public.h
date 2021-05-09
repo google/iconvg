@@ -74,6 +74,38 @@ typedef struct iconvg_premul_color_struct {
   uint8_t rgba[4];
 } iconvg_premul_color;
 
+// iconvg_palette is a list of 64 alpha-premultiplied RGBA colors.
+typedef struct iconvg_palette_struct {
+  iconvg_premul_color colors[64];
+} iconvg_palette;
+
+// ----
+
+// iconvg_decode_options holds the optional arguments to iconvg_decode.
+typedef struct iconvg_decode_options_struct {
+  // sizeof__iconvg_decode_options should be set to the sizeof this data
+  // structure. An explicit value allows different library versions to work
+  // together when dynamically linked. Newer library versions will only append
+  // fields, never remove or re-arrange old fields. If the caller has a newer
+  // library version, newer fields will be ignored. If the callee has a newer
+  // library version, missing fields will assume the implicit default values.
+  size_t sizeof__iconvg_decode_options;
+
+  // palette, if non-NULL, is the custom palette used for rendering. If NULL,
+  // the IconVG file's suggested palette is used instead.
+  iconvg_palette* palette;
+} iconvg_decode_options;
+
+// iconvg_make_decode_options_ffv1 returns an iconvg_decode_options suitable
+// for FFV (file format version) 1.
+static inline iconvg_decode_options  //
+iconvg_make_decode_options_ffv1(iconvg_palette* palette) {
+  iconvg_decode_options o = {0};
+  o.sizeof__iconvg_decode_options = sizeof(iconvg_decode_options);
+  o.palette = palette;
+  return o;
+}
+
 // ----
 
 // iconvg_canvas is conceptually a 'virtual super-class' with e.g. Cairo-backed
@@ -176,10 +208,13 @@ iconvg_make_debug_canvas(FILE* f,
 // non-NULL error is encountered, whether a file format error or a callback
 // error. This non-NULL error becomes the err_msg argument to end_decode and
 // this function, iconvg_decode, returns whatever end_decode returns.
+//
+// options may be NULL, in which case default values will be used.
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
-              size_t src_len);
+              size_t src_len,
+              const iconvg_decode_options* options);
 
 // iconvg_decode_viewbox sets *dst_viewbox to the ViewBox Metadata from the src
 // IconVG-formatted data.

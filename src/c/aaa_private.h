@@ -37,6 +37,14 @@ iconvg_private_peek_u32le(const uint8_t* p) {
          ((uint32_t)(p[2]) << 16) | ((uint32_t)(p[3]) << 24);
 }
 
+static inline void  //
+iconvg_private_poke_u32le(uint8_t* p, uint32_t x) {
+  p[0] = (uint8_t)(x >> 24);
+  p[1] = (uint8_t)(x >> 16);
+  p[2] = (uint8_t)(x >> 8);
+  p[3] = (uint8_t)(x >> 0);
+}
+
 static inline float  //
 iconvg_private_reinterpret_from_u32_to_f32(uint32_t u) {
   float f = 0;
@@ -77,11 +85,24 @@ typedef struct iconvg_private_decoder_struct {
 
 // ----
 
-typedef struct iconvg_private_bank_struct {
-  iconvg_premul_color creg[64];
-  float nreg[64];
-} iconvg_private_bank;
-
-// ----
-
 extern const uint8_t iconvg_private_one_byte_colors[512];
+extern const iconvg_palette iconvg_private_default_palette;
+
+static inline void  //
+iconvg_private_set_one_byte_color(uint8_t* dst,
+                                  const iconvg_palette* custom_palette,
+                                  const iconvg_palette* creg,
+                                  uint8_t u) {
+  if (u < 0x80) {
+    iconvg_private_poke_u32le(
+        dst, iconvg_private_peek_u32le(
+                 &iconvg_private_one_byte_colors[4 * ((size_t)u)]));
+  } else if (u < 0xC0) {
+    iconvg_private_poke_u32le(
+        dst,
+        iconvg_private_peek_u32le(&custom_palette->colors[u & 0x3F].rgba[0]));
+  } else {
+    iconvg_private_poke_u32le(
+        dst, iconvg_private_peek_u32le(&creg->colors[u & 0x3F].rgba[0]));
+  }
+}

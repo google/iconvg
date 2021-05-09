@@ -143,7 +143,7 @@ main(int argc, char** argv) {
   // Decode the IconVG.
   {
     iconvg_canvas canvas = iconvg_make_debug_canvas(stdout, "debug: ", NULL);
-    const char* err_msg = iconvg_decode(&canvas, src_ptr, src_len);
+    const char* err_msg = iconvg_decode(&canvas, src_ptr, src_len, NULL);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
               err_msg);

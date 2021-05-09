@@ -27,8 +27,9 @@
 // ---------------- Version
 
 // This section deals with library versions (also known as API versions), which
-// are different from file format versions. For example, library versions 3.0.1
-// and 4.2.0 could have incompatible API but still speak the same file format.
+// are different from file format versions (FFVs). For example, library
+// versions 3.0.1 and 4.2.0 could have incompatible API but still speak the
+// same file format.
 
 // ICONVG_LIBRARY_VERSION is major.minor.patch, as per https://semver.org/, as
 // a uint64_t. The major number is the high 32 bits. The minor number is the
