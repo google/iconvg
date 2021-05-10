@@ -63,6 +63,7 @@
 #include "./debug.c"
 #include "./decoder.c"
 #include "./errors.c"
+#include "./paint.c"
 #include "./rectangle.c"
 #endif  // ICONVG_IMPLEMENTATION
 

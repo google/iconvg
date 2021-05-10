@@ -276,9 +276,7 @@ iconvg_private_decoder__decode_metadata_suggested_palette(
 static const char*  //
 iconvg_private_execute_bytecode(iconvg_canvas* c,
                                 iconvg_private_decoder* d,
-                                const iconvg_palette* custom_palette,
-                                iconvg_palette* creg,
-                                float* nreg) {
+                                iconvg_paint* state) {
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
 
@@ -316,8 +314,9 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
-      uint8_t* rgba = &creg->colors[creg_index].rgba[0];
-      iconvg_private_set_one_byte_color(rgba, custom_palette, creg, d->ptr[0]);
+      uint8_t* rgba = &state->creg.colors[creg_index].rgba[0];
+      iconvg_private_set_one_byte_color(rgba, &state->custom_palette,
+                                        &state->creg, d->ptr[0]);
       d->ptr += 1;
       d->len -= 1;
       sel[0] += ((opcode & 0x07) == 0x07) ? 1 : 0;
@@ -328,7 +327,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
-      uint8_t* rgba = &creg->colors[creg_index].rgba[0];
+      uint8_t* rgba = &state->creg.colors[creg_index].rgba[0];
       rgba[0] = 0x11 * (d->ptr[0] >> 4);
       rgba[1] = 0x11 * (d->ptr[0] & 0x0F);
       rgba[2] = 0x11 * (d->ptr[1] >> 4);
@@ -343,7 +342,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
-      uint8_t* rgba = &creg->colors[creg_index].rgba[0];
+      uint8_t* rgba = &state->creg.colors[creg_index].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -358,7 +357,7 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
-      uint8_t* rgba = &creg->colors[creg_index].rgba[0];
+      uint8_t* rgba = &state->creg.colors[creg_index].rgba[0];
       rgba[0] = d->ptr[0];
       rgba[1] = d->ptr[1];
       rgba[2] = d->ptr[2];
@@ -373,11 +372,13 @@ styling_mode:
         return iconvg_error_bad_color;
       }
       uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
-      uint8_t* rgba = &creg->colors[creg_index].rgba[0];
+      uint8_t* rgba = &state->creg.colors[creg_index].rgba[0];
       uint8_t p[4] = {0};
       uint8_t q[4] = {0};
-      iconvg_private_set_one_byte_color(&p[0], custom_palette, creg, d->ptr[1]);
-      iconvg_private_set_one_byte_color(&q[0], custom_palette, creg, d->ptr[2]);
+      iconvg_private_set_one_byte_color(&p[0], &state->custom_palette,
+                                        &state->creg, d->ptr[1]);
+      iconvg_private_set_one_byte_color(&q[0], &state->custom_palette,
+                                        &state->creg, d->ptr[2]);
       uint32_t q_blend = d->ptr[0];
       uint32_t p_blend = 255 - q_blend;
       rgba[0] = (uint8_t)(((p_blend * p[0]) + (q_blend * q[0]) + 128) / 255);
@@ -391,7 +392,7 @@ styling_mode:
 
     } else if (opcode < 0xB0) {  // Set NREG[etc]; real number.
       uint8_t nreg_index = (sel[1] - adjustments[opcode & 0x07]) & 0x3F;
-      float* num = &nreg[nreg_index];
+      float* num = &state->nreg[nreg_index];
       if (!iconvg_private_decoder__decode_real_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -400,7 +401,7 @@ styling_mode:
 
     } else if (opcode < 0xB8) {  // Set NREG[etc]; coordinate number.
       uint8_t nreg_index = (sel[1] - adjustments[opcode & 0x07]) & 0x3F;
-      float* num = &nreg[nreg_index];
+      float* num = &state->nreg[nreg_index];
       if (!iconvg_private_decoder__decode_coordinate_number(d, num)) {
         return iconvg_error_bad_coordinate;
       }
@@ -409,7 +410,7 @@ styling_mode:
 
     } else if (opcode < 0xC0) {  // Set NREG[etc]; zero-to-one number.
       uint8_t nreg_index = (sel[1] - adjustments[opcode & 0x07]) & 0x3F;
-      float* num = &nreg[nreg_index];
+      float* num = &state->nreg[nreg_index];
       if (!iconvg_private_decoder__decode_zero_to_one_number(d, num)) {
         return iconvg_error_bad_number;
       }
@@ -424,6 +425,8 @@ styling_mode:
       ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
       x1 = curr_x;
       y1 = curr_y;
+      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
+             sizeof(state->paint_rgba));
       // TODO: if H is outside the LOD range then skip the drawing.
       goto drawing_mode;
 
@@ -678,7 +681,7 @@ drawing_mode:
     switch (opcode) {
       case 0xE1: {  // 'z' mnemonic: close_path.
         ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
-        // TODO: call c->vtable->paint.
+        ICONVG_PRIVATE_TRY((*c->vtable->paint)(c, state));
         goto styling_mode;
       }
 
@@ -819,9 +822,10 @@ iconvg_private_decode(iconvg_canvas* c,
                       iconvg_private_decoder* d,
                       const iconvg_decode_options* options) {
   iconvg_rectangle_f32 viewbox = iconvg_private_default_viewbox();
-  iconvg_palette custom_palette;
-  memcpy(&custom_palette, &iconvg_private_default_palette,
-         sizeof(custom_palette));
+  iconvg_paint state;
+  memset(&state.paint_rgba, 0, sizeof(state.paint_rgba));
+  memcpy(&state.custom_palette, &iconvg_private_default_palette,
+         sizeof(state.custom_palette));
 
   if (!iconvg_private_decoder__decode_magic_identifier(d)) {
     return iconvg_error_bad_magic_identifier;
@@ -858,7 +862,7 @@ iconvg_private_decode(iconvg_canvas* c,
 
       case 1:  // MID 1 (Suggested Palette).
         if (!iconvg_private_decoder__decode_metadata_suggested_palette(
-                &chunk, &custom_palette) ||
+                &chunk, &state.custom_palette) ||
             (chunk.len != 0)) {
           return iconvg_error_bad_metadata_suggested_palette;
         }
@@ -875,20 +879,16 @@ iconvg_private_decode(iconvg_canvas* c,
 
   ICONVG_PRIVATE_TRY((*c->vtable->on_metadata_viewbox)(c, viewbox));
   ICONVG_PRIVATE_TRY(
-      (*c->vtable->on_metadata_suggested_palette)(c, &custom_palette));
+      (*c->vtable->on_metadata_suggested_palette)(c, &state.custom_palette));
 
   if (options && options->palette) {
-    memcpy(&custom_palette, options->palette, sizeof(custom_palette));
+    memcpy(&state.custom_palette, options->palette,
+           sizeof(state.custom_palette));
   }
 
-  iconvg_palette creg;
-  memcpy(&creg, &custom_palette, sizeof(creg));
-
-  float nreg[64];
-  memset(&nreg[0], 0, sizeof(nreg));
-
-  return iconvg_private_execute_bytecode(c, d, &custom_palette, &creg,
-                                         &nreg[0]);
+  memcpy(&state.creg, &state.custom_palette, sizeof(state.creg));
+  memset(&state.nreg[0], 0, sizeof(state.nreg));
+  return iconvg_private_execute_bytecode(c, d, &state);
 }
 
 const char*  //

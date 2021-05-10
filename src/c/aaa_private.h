@@ -120,3 +120,12 @@ iconvg_private_last_color_that_isnt_opaque_black(
   }
   return i;
 }
+
+// ----
+
+struct iconvg_paint_struct {
+  uint8_t paint_rgba[4];
+  iconvg_palette custom_palette;
+  iconvg_palette creg;
+  float nreg[64];
+};

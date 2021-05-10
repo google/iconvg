@@ -43,9 +43,6 @@ extern const char iconvg_error_bad_styling_opcode[];
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
-bool  //
-iconvg_error_is_file_format_error(const char* err_msg);
-
 // ----
 
 // iconvg_rectangle_f32 is an axis-aligned rectangle with float32 co-ordinates.
@@ -68,6 +65,13 @@ typedef struct iconvg_rectangle_f32_struct {
 #define ICONVG_RGBA_INDEX_GREEN 2
 #define ICONVG_RGBA_INDEX_ALPHA 3
 
+// iconvg_nonpremul_color is an non-alpha-premultiplied RGBA color. Non-alpha-
+// premultiplication means that {0x00, 0xFF, 0x00, 0xC0} represents a
+// 75%-opaque, fully saturated green.
+typedef struct iconvg_nonpremul_color_struct {
+  uint8_t rgba[4];
+} iconvg_nonpremul_color;
+
 // iconvg_premul_color is an alpha-premultiplied RGBA color. Alpha-
 // premultiplication means that {0x00, 0xC0, 0x00, 0xC0} represents a
 // 75%-opaque, fully saturated green.
@@ -79,6 +83,14 @@ typedef struct iconvg_premul_color_struct {
 typedef struct iconvg_palette_struct {
   iconvg_premul_color colors[64];
 } iconvg_palette;
+
+// ----
+
+struct iconvg_paint_struct;
+
+// iconvg_paint is an opaque data structure passed to iconvg_canvas_vtable's
+// paint method.
+typedef struct iconvg_paint_struct iconvg_paint;
 
 // ----
 
@@ -154,6 +166,7 @@ typedef struct iconvg_canvas_vtable_struct {
                              bool sweep,
                              float final_x,
                              float final_y);
+  const char* (*paint)(struct iconvg_canvas_struct* c, const iconvg_paint* p);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
@@ -182,6 +195,11 @@ typedef struct iconvg_canvas_struct {
 extern "C" {
 #endif
 
+// iconvg_error_is_file_format_error returns whether err_msg is one of the
+// built-in iconvg_error_bad_etc constants.
+bool  //
+iconvg_error_is_file_format_error(const char* err_msg);
+
 // iconvg_make_debug_canvas returns an iconvg_canvas that logs vtable calls to
 // f before forwarding the call on to the wrapped iconvg_canvas. Log messages
 // are prefixed by message_prefix.
@@ -201,6 +219,8 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
+
+// ----
 
 // iconvg_decode decodes the src IconVG-formatted data, calling dst_canvas's
 // callbacks (vtable functions) to paint the decoded vector graphic.
@@ -232,6 +252,29 @@ const char*  //
 iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
                       const uint8_t* src_ptr,
                       size_t src_len);
+
+// ----
+
+// iconvg_paint__is_flat_color returns whether self is a flat color (as opposed
+// to a gradient).
+bool  //
+iconvg_paint__is_flat_color(const iconvg_paint* self);
+
+// iconvg_paint__flat_color_as_nonpremul_color returns self's color (as non-
+// alpha-premultiplied), assuming that self is a flat color.
+//
+// If self is not a flat color than the result may be a non-sensical color.
+iconvg_nonpremul_color  //
+iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self);
+
+// iconvg_paint__flat_color_as_premul_color returns self's color (as alpha-
+// premultiplied), assuming that self is a flat color.
+//
+// If self is not a flat color than the result may be a non-sensical color.
+iconvg_premul_color  //
+iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self);
+
+// ----
 
 // iconvg_rectangle_f32__width returns self's width.
 float  //

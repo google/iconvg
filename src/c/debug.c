@@ -176,6 +176,31 @@ iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
 }
 
 static const char*  //
+iconvg_private_debug_canvas__paint(iconvg_canvas* c, const iconvg_paint* p) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    if (iconvg_paint__is_flat_color(p)) {
+      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
+      fprintf(f, "%spaint(flat_color{%02X:%02X:%02X:%02X})\n",
+              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
+    } else {
+      // TODO: a more informative printf message.
+      fprintf(f, "%spaint(gradient{...})\n",
+              ((const char*)(c->context_const_ptr)));
+    }
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->paint)(wrapped, p);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -209,10 +234,11 @@ iconvg_private_debug_canvas__on_metadata_suggested_palette(
               ((const char*)(c->context_const_ptr)));
       for (int i = 0; i <= j; i++) {
         fprintf(f, "%02X:%02X:%02X:%02X%s",
-                suggested_palette->colors[i].rgba[0],
-                suggested_palette->colors[i].rgba[1],
-                suggested_palette->colors[i].rgba[2],
-                suggested_palette->colors[i].rgba[3], (i < 63) ? ", " : ")\n");
+                ((int)(suggested_palette->colors[i].rgba[0])),
+                ((int)(suggested_palette->colors[i].rgba[1])),
+                ((int)(suggested_palette->colors[i].rgba[2])),
+                ((int)(suggested_palette->colors[i].rgba[3])),
+                (i < 63) ? ", " : ")\n");
       }
       if (j < 63) {
         fprintf(f, "...)\n");
@@ -243,6 +269,7 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__path_arc_to,
+        &iconvg_private_debug_canvas__paint,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
         &iconvg_private_debug_canvas__on_metadata_suggested_palette,
 };
