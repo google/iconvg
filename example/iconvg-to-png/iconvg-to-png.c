@@ -66,8 +66,6 @@ const char*  //
 initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   if (!pb) {
     return "main: NULL pixel_buffer";
-  } else if ((width > 0x7FFF) || (height > 0x7FFF)) {
-    return "main: graphic is too large";
   }
   cairo_surface_t* cs =
       cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)width, (int)height);
@@ -288,6 +286,19 @@ main(int argc, char** argv) {
     }
   }
 
+  // Check that the graphic isn't too large. An 0x7FFF = 32767 pixel width or
+  // height upper bound is somewhat arbitrary, but it simplifies any overflow
+  // concerns about (pixel_width * pixel_height * bytes_per_pixel).
+  if ((pixel_width > 0x7FFF) || (pixel_height > 0x7FFF)) {
+    fprintf(stderr, "main: graphic is too large");
+    return 1;
+  } else if ((pixel_width == 0) || (pixel_height == 0)) {
+    // IconVG can represent empty images (containing no pixels when rasterized,
+    // analogous to empty strings containing no characters), but PNG cannot.
+    fprintf(stderr, "main: cannot write an empty-sized PNG image");
+    return 1;
+  }
+
   // Initialize the pixel buffer.
   pixel_buffer pb = {0};
   {
@@ -308,7 +319,9 @@ main(int argc, char** argv) {
     if (true) {  // TODO: parse a -debug command line arg.
       c = &debug_canvas;
     }
-    const char* err_msg = iconvg_decode(c, src_ptr, src_len, NULL);
+    const char* err_msg = iconvg_decode(
+        c, iconvg_make_rectangle_f32(0, 0, pixel_width, pixel_height), src_ptr,
+        src_len, NULL);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
               err_msg);

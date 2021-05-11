@@ -13,10 +13,13 @@
 // limitations under the License.
 
 static const char*  //
-iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c,
+                                          iconvg_rectangle_f32 dst_rect) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
-    fprintf(f, "%sbegin_decode()\n", ((const char*)(c->context_const_ptr)));
+    fprintf(f, "%sbegin_decode({%g, %g, %g, %g})\n",
+            ((const char*)(c->context_const_ptr)), dst_rect.min_x,
+            dst_rect.min_y, dst_rect.max_x, dst_rect.max_y);
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
   if (!wrapped) {
@@ -25,7 +28,7 @@ iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
              sizeof(iconvg_canvas_vtable)) {
     return iconvg_error_unsupported_vtable;
   }
-  return (*wrapped->vtable->begin_decode)(wrapped);
+  return (*wrapped->vtable->begin_decode)(wrapped, dst_rect);
 }
 
 static const char*  //

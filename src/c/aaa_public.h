@@ -60,6 +60,16 @@ typedef struct iconvg_rectangle_f32_struct {
   float max_y;
 } iconvg_rectangle_f32;
 
+static inline iconvg_rectangle_f32  //
+iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
+  iconvg_rectangle_f32 r;
+  r.min_x = min_x;
+  r.min_y = min_y;
+  r.max_x = max_x;
+  r.max_y = max_y;
+  return r;
+}
+
 // ----
 
 #define ICONVG_RGBA_INDEX___RED 0
@@ -138,7 +148,8 @@ struct iconvg_canvas_struct;
 
 typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
-  const char* (*begin_decode)(struct iconvg_canvas_struct* c);
+  const char* (*begin_decode)(struct iconvg_canvas_struct* c,
+                              iconvg_rectangle_f32 dst_rect);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
                             const char* err_msg,
                             size_t num_bytes_consumed,
@@ -263,6 +274,7 @@ iconvg_make_cairo_canvas(cairo_t* cr);
 // options may be NULL, in which case default values will be used.
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
+              iconvg_rectangle_f32 dst_rect,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options);
@@ -303,13 +315,13 @@ iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self);
 
 // ----
 
-// iconvg_rectangle_f32__width returns self's width.
-float  //
-iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self);
+// iconvg_rectangle_f32__width_f64 returns self's width as an f64.
+double  //
+iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self);
 
-// iconvg_rectangle_f32__height returns self's height.
-float  //
-iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self);
+// iconvg_rectangle_f32__height returns self's height as an f64.
+double  //
+iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"

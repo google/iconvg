@@ -13,7 +13,8 @@
 // limitations under the License.
 
 static const char*  //
-iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c,
+                                           iconvg_rectangle_f32 dst_rect) {
   return ((const char*)(c->context_const_ptr));
 }
 

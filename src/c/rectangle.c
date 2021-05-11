@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-float  //
-iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self) {
-  // Note that max_x or min_x may be NaN.
+// ----
+
+// Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
+// the same as !(min >= max).
+
+double  //
+iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self) {
   if (self && (self->max_x > self->min_x)) {
-    return self->max_x - self->min_x;
+    return ((double)self->max_x) - ((double)self->min_x);
   }
-  return 0.0f;
+  return 0.0;
 }
 
-float  //
-iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self) {
-  // Note that max_y or min_y may be NaN.
+double  //
+iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self) {
   if (self && (self->max_y > self->min_y)) {
-    return self->max_y - self->min_y;
+    return ((double)self->max_y) - ((double)self->min_y);
   }
-  return 0.0f;
+  return 0.0;
 }

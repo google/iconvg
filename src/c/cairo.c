@@ -24,7 +24,14 @@ iconvg_make_cairo_canvas(cairo_t* cr) {
 #include <cairo/cairo.h>
 
 static const char*  //
-iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
+                                          iconvg_rectangle_f32 dst_rect) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_save(cr);
+  cairo_rectangle(cr, dst_rect.min_x, dst_rect.min_y,
+                  iconvg_rectangle_f32__width_f64(&dst_rect),
+                  iconvg_rectangle_f32__height_f64(&dst_rect));
+  cairo_clip(cr);
   return NULL;
 }
 
@@ -33,6 +40,8 @@ iconvg_private_cairo_canvas__end_decode(iconvg_canvas* c,
                                         const char* err_msg,
                                         size_t num_bytes_consumed,
                                         size_t num_bytes_remaining) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_restore(cr);
   return err_msg;
 }
 

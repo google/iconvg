@@ -106,6 +106,16 @@ typedef struct iconvg_rectangle_f32_struct {
   float max_y;
 } iconvg_rectangle_f32;
 
+static inline iconvg_rectangle_f32  //
+iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
+  iconvg_rectangle_f32 r;
+  r.min_x = min_x;
+  r.min_y = min_y;
+  r.max_x = max_x;
+  r.max_y = max_y;
+  return r;
+}
+
 // ----
 
 #define ICONVG_RGBA_INDEX___RED 0
@@ -184,7 +194,8 @@ struct iconvg_canvas_struct;
 
 typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
-  const char* (*begin_decode)(struct iconvg_canvas_struct* c);
+  const char* (*begin_decode)(struct iconvg_canvas_struct* c,
+                              iconvg_rectangle_f32 dst_rect);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
                             const char* err_msg,
                             size_t num_bytes_consumed,
@@ -309,6 +320,7 @@ iconvg_make_cairo_canvas(cairo_t* cr);
 // options may be NULL, in which case default values will be used.
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
+              iconvg_rectangle_f32 dst_rect,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options);
@@ -349,13 +361,13 @@ iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self);
 
 // ----
 
-// iconvg_rectangle_f32__width returns self's width.
-float  //
-iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self);
+// iconvg_rectangle_f32__width_f64 returns self's width as an f64.
+double  //
+iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self);
 
-// iconvg_rectangle_f32__height returns self's height.
-float  //
-iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self);
+// iconvg_rectangle_f32__height returns self's height as an f64.
+double  //
+iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -476,6 +488,7 @@ iconvg_private_last_color_that_isnt_opaque_black(
 // ----
 
 struct iconvg_paint_struct {
+  iconvg_rectangle_f32 viewbox;
   uint8_t paint_rgba[4];
   iconvg_palette custom_palette;
   iconvg_palette creg;
@@ -485,7 +498,8 @@ struct iconvg_paint_struct {
 // -------------------------------- #include "./broken.c"
 
 static const char*  //
-iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c,
+                                           iconvg_rectangle_f32 dst_rect) {
   return ((const char*)(c->context_const_ptr));
 }
 
@@ -613,7 +627,14 @@ iconvg_make_cairo_canvas(cairo_t* cr) {
 #include <cairo/cairo.h>
 
 static const char*  //
-iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
+                                          iconvg_rectangle_f32 dst_rect) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_save(cr);
+  cairo_rectangle(cr, dst_rect.min_x, dst_rect.min_y,
+                  iconvg_rectangle_f32__width_f64(&dst_rect),
+                  iconvg_rectangle_f32__height_f64(&dst_rect));
+  cairo_clip(cr);
   return NULL;
 }
 
@@ -622,6 +643,8 @@ iconvg_private_cairo_canvas__end_decode(iconvg_canvas* c,
                                         const char* err_msg,
                                         size_t num_bytes_consumed,
                                         size_t num_bytes_remaining) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_restore(cr);
   return err_msg;
 }
 
@@ -979,10 +1002,13 @@ const iconvg_palette iconvg_private_default_palette = {{
 // -------------------------------- #include "./debug.c"
 
 static const char*  //
-iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
+iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c,
+                                          iconvg_rectangle_f32 dst_rect) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
-    fprintf(f, "%sbegin_decode()\n", ((const char*)(c->context_const_ptr)));
+    fprintf(f, "%sbegin_decode({%g, %g, %g, %g})\n",
+            ((const char*)(c->context_const_ptr)), dst_rect.min_x,
+            dst_rect.min_y, dst_rect.max_x, dst_rect.max_y);
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
   if (!wrapped) {
@@ -991,7 +1017,7 @@ iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c) {
              sizeof(iconvg_canvas_vtable)) {
     return iconvg_error_unsupported_vtable;
   }
-  return (*wrapped->vtable->begin_decode)(wrapped);
+  return (*wrapped->vtable->begin_decode)(wrapped, dst_rect);
 }
 
 static const char*  //
@@ -1536,6 +1562,7 @@ iconvg_private_decoder__decode_metadata_suggested_palette(
 
 static const char*  //
 iconvg_private_execute_bytecode(iconvg_canvas* c,
+                                iconvg_rectangle_f32 r,
                                 iconvg_private_decoder* d,
                                 iconvg_paint* state) {
   // adjustments are the ADJ values from the IconVG spec.
@@ -1552,6 +1579,23 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float x3 = +0.0f;
   float y3 = +0.0f;
   uint32_t flags = 0;
+
+  double scale_x = +0.0;
+  double scale_y = +0.0;
+  double bias_x = +0.0;
+  double bias_y = +0.0;
+  {
+    double rw = iconvg_rectangle_f32__width_f64(&r);
+    double rh = iconvg_rectangle_f32__height_f64(&r);
+    double vw = iconvg_rectangle_f32__width_f64(&state->viewbox);
+    double vh = iconvg_rectangle_f32__height_f64(&state->viewbox);
+    if ((rw > 0) && (rh > 0) && (vw > 0) && (vh > 0)) {
+      scale_x = rw / vw;
+      scale_y = rh / vh;
+      bias_x = r.min_x - (state->viewbox.min_x * scale_x);
+      bias_y = r.min_y - (state->viewbox.min_y * scale_y);
+    }
+  }
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
@@ -1684,7 +1728,10 @@ styling_mode:
         return iconvg_error_bad_coordinate;
       }
       ICONVG_PRIVATE_TRY((*c->vtable->begin_drawing)(c));
-      ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+      ICONVG_PRIVATE_TRY(
+          (*c->vtable->begin_path)(c,                            //
+                                   (curr_x * scale_x) + bias_x,  //
+                                   (curr_y * scale_y) + bias_y));
       x1 = curr_x;
       y1 = curr_y;
       memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
@@ -1720,7 +1767,10 @@ drawing_mode:
               !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
             return iconvg_error_bad_coordinate;
           }
-          ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_line_to)(c,                            //
+                                         (curr_x * scale_x) + bias_x,  //
+                                         (curr_y * scale_y) + bias_y));
           x1 = curr_x;
           y1 = curr_y;
         }
@@ -1736,7 +1786,10 @@ drawing_mode:
           }
           curr_x += x1;
           curr_y += y1;
-          ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_line_to)(c,                            //
+                                         (curr_x * scale_x) + bias_x,  //
+                                         (curr_y * scale_y) + bias_y));
           x1 = curr_x;
           y1 = curr_y;
         }
@@ -1749,7 +1802,12 @@ drawing_mode:
               !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
             return iconvg_error_bad_coordinate;
           }
-          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_quad_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y));
           curr_x = x2;
           curr_y = y2;
           x1 = (2 * curr_x) - x1;
@@ -1766,7 +1824,12 @@ drawing_mode:
           }
           x2 += curr_x;
           y2 += curr_y;
-          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_quad_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y));
           curr_x = x2;
           curr_y = y2;
           x1 = (2 * curr_x) - x1;
@@ -1783,7 +1846,12 @@ drawing_mode:
               !iconvg_private_decoder__decode_coordinate_number(d, &y2)) {
             return iconvg_error_bad_coordinate;
           }
-          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_quad_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y));
           curr_x = x2;
           curr_y = y2;
           x1 = (2 * curr_x) - x1;
@@ -1804,7 +1872,12 @@ drawing_mode:
           y1 += curr_y;
           x2 += curr_x;
           y2 += curr_y;
-          ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(c, x1, y1, x2, y2));
+          ICONVG_PRIVATE_TRY(
+              (*c->vtable->path_quad_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y));
           curr_x = x2;
           curr_y = y2;
           x1 = (2 * curr_x) - x1;
@@ -1822,7 +1895,13 @@ drawing_mode:
             return iconvg_error_bad_coordinate;
           }
           ICONVG_PRIVATE_TRY(
-              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+              (*c->vtable->path_cube_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y,  //
+                                         (x3 * scale_x) + bias_x,  //
+                                         (y3 * scale_y) + bias_y));
           curr_x = x3;
           curr_y = y3;
           x1 = (2 * curr_x) - x2;
@@ -1844,7 +1923,13 @@ drawing_mode:
           x3 += curr_x;
           y3 += curr_y;
           ICONVG_PRIVATE_TRY(
-              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+              (*c->vtable->path_cube_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y,  //
+                                         (x3 * scale_x) + bias_x,  //
+                                         (y3 * scale_y) + bias_y));
           curr_x = x3;
           curr_y = y3;
           x1 = (2 * curr_x) - x2;
@@ -1864,7 +1949,13 @@ drawing_mode:
             return iconvg_error_bad_coordinate;
           }
           ICONVG_PRIVATE_TRY(
-              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+              (*c->vtable->path_cube_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y,  //
+                                         (x3 * scale_x) + bias_x,  //
+                                         (y3 * scale_y) + bias_y));
           curr_x = x3;
           curr_y = y3;
           x1 = (2 * curr_x) - x2;
@@ -1890,7 +1981,13 @@ drawing_mode:
           x3 += curr_x;
           y3 += curr_y;
           ICONVG_PRIVATE_TRY(
-              (*c->vtable->path_cube_to)(c, x1, y1, x2, y2, x3, y3));
+              (*c->vtable->path_cube_to)(c,                        //
+                                         (x1 * scale_x) + bias_x,  //
+                                         (y1 * scale_y) + bias_y,  //
+                                         (x2 * scale_x) + bias_x,  //
+                                         (y2 * scale_y) + bias_y,  //
+                                         (x3 * scale_x) + bias_x,  //
+                                         (y3 * scale_y) + bias_y));
           curr_x = x3;
           curr_y = y3;
           x1 = (2 * curr_x) - x2;
@@ -1953,7 +2050,10 @@ drawing_mode:
             !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
           return iconvg_error_bad_coordinate;
         }
-        ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->begin_path)(c,                            //
+                                     (curr_x * scale_x) + bias_x,  //
+                                     (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -1967,7 +2067,10 @@ drawing_mode:
         }
         curr_x += x1;
         curr_y += y1;
-        ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->begin_path)(c,                            //
+                                     (curr_x * scale_x) + bias_x,  //
+                                     (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -1977,7 +2080,10 @@ drawing_mode:
         if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x)) {
           return iconvg_error_bad_coordinate;
         }
-        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->path_line_to)(c,                            //
+                                       (curr_x * scale_x) + bias_x,  //
+                                       (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -1988,7 +2094,10 @@ drawing_mode:
           return iconvg_error_bad_coordinate;
         }
         curr_x += x1;
-        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->path_line_to)(c,                            //
+                                       (curr_x * scale_x) + bias_x,  //
+                                       (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -1998,7 +2107,10 @@ drawing_mode:
         if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
           return iconvg_error_bad_coordinate;
         }
-        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->path_line_to)(c,                            //
+                                       (curr_x * scale_x) + bias_x,  //
+                                       (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -2009,7 +2121,10 @@ drawing_mode:
           return iconvg_error_bad_coordinate;
         }
         curr_y += y1;
-        ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(c, curr_x, curr_y));
+        ICONVG_PRIVATE_TRY(
+            (*c->vtable->path_line_to)(c,                            //
+                                       (curr_x * scale_x) + bias_x,  //
+                                       (curr_y * scale_y) + bias_y));
         x1 = curr_x;
         y1 = curr_y;
         continue;
@@ -2081,10 +2196,11 @@ iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
 
 static const char*  //
 iconvg_private_decode(iconvg_canvas* c,
+                      iconvg_rectangle_f32 r,
                       iconvg_private_decoder* d,
                       const iconvg_decode_options* options) {
-  iconvg_rectangle_f32 viewbox = iconvg_private_default_viewbox();
   iconvg_paint state;
+  state.viewbox = iconvg_private_default_viewbox();
   memset(&state.paint_rgba, 0, sizeof(state.paint_rgba));
   memcpy(&state.custom_palette, &iconvg_private_default_palette,
          sizeof(state.custom_palette));
@@ -2116,7 +2232,7 @@ iconvg_private_decode(iconvg_canvas* c,
     switch (metadata_id) {
       case 0:  // MID 0 (ViewBox).
         if (!iconvg_private_decoder__decode_metadata_viewbox(&chunk,
-                                                             &viewbox) ||
+                                                             &state.viewbox) ||
             (chunk.len != 0)) {
           return iconvg_error_bad_metadata_viewbox;
         }
@@ -2139,7 +2255,7 @@ iconvg_private_decode(iconvg_canvas* c,
     previous_metadata_id = ((int32_t)metadata_id);
   }
 
-  ICONVG_PRIVATE_TRY((*c->vtable->on_metadata_viewbox)(c, viewbox));
+  ICONVG_PRIVATE_TRY((*c->vtable->on_metadata_viewbox)(c, state.viewbox));
   ICONVG_PRIVATE_TRY(
       (*c->vtable->on_metadata_suggested_palette)(c, &state.custom_palette));
 
@@ -2150,11 +2266,12 @@ iconvg_private_decode(iconvg_canvas* c,
 
   memcpy(&state.creg, &state.custom_palette, sizeof(state.creg));
   memset(&state.nreg[0], 0, sizeof(state.nreg));
-  return iconvg_private_execute_bytecode(c, d, &state);
+  return iconvg_private_execute_bytecode(c, r, d, &state);
 }
 
 const char*  //
 iconvg_decode(iconvg_canvas* dst_canvas,
+              iconvg_rectangle_f32 dst_rect,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options) {
@@ -2177,9 +2294,10 @@ iconvg_decode(iconvg_canvas* dst_canvas,
   d.ptr = src_ptr;
   d.len = src_len;
 
-  const char* err_msg = (*dst_canvas->vtable->begin_decode)(dst_canvas);
+  const char* err_msg =
+      (*dst_canvas->vtable->begin_decode)(dst_canvas, dst_rect);
   if (!err_msg) {
-    err_msg = iconvg_private_decode(dst_canvas, &d, options);
+    err_msg = iconvg_private_decode(dst_canvas, dst_rect, &d, options);
   }
   return (*dst_canvas->vtable->end_decode)(dst_canvas, err_msg, src_len - d.len,
                                            d.len);
@@ -2282,22 +2400,25 @@ iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self) {
 
 // -------------------------------- #include "./rectangle.c"
 
-float  //
-iconvg_rectangle_f32__width(const iconvg_rectangle_f32* self) {
-  // Note that max_x or min_x may be NaN.
+// ----
+
+// Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
+// the same as !(min >= max).
+
+double  //
+iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self) {
   if (self && (self->max_x > self->min_x)) {
-    return self->max_x - self->min_x;
+    return ((double)self->max_x) - ((double)self->min_x);
   }
-  return 0.0f;
+  return 0.0;
 }
 
-float  //
-iconvg_rectangle_f32__height(const iconvg_rectangle_f32* self) {
-  // Note that max_y or min_y may be NaN.
+double  //
+iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self) {
   if (self && (self->max_y > self->min_y)) {
-    return self->max_y - self->min_y;
+    return ((double)self->max_y) - ((double)self->min_y);
   }
-  return 0.0f;
+  return 0.0;
 }
 
 #endif  // ICONVG_IMPLEMENTATION
