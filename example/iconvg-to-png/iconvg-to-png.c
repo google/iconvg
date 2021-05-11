@@ -20,9 +20,11 @@
 //     If input.ivg is omitted, it reads from stdin.
 
 #include <errno.h>
+#include <png.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // IconVG ships as a "single file C library" or "header file library" as per
@@ -44,6 +46,96 @@
 #endif
 
 uint8_t g_src_buffer_array[SRC_BUFFER_ARRAY_SIZE];
+
+typedef struct {
+  uint8_t* data;
+  uint32_t width;
+  uint32_t height;
+  iconvg_canvas canvas;
+  void* extra0;
+  void* extra1;
+} pixel_buffer;
+
+// ----
+
+#if defined(ICONVG_CONFIG__ENABLE_CAIRO_BACKEND)
+
+#include <cairo/cairo.h>
+
+const char*  //
+initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  } else if ((width > 0x7FFF) || (height > 0x7FFF)) {
+    return "main: graphic is too large";
+  }
+  cairo_surface_t* cs =
+      cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)width, (int)height);
+  cairo_t* cr = cairo_create(cs);
+
+  *pb = ((pixel_buffer){0});
+  pb->canvas = iconvg_make_cairo_canvas(cr);
+  pb->extra0 = cs;
+  pb->extra1 = cr;
+  return NULL;
+}
+
+const char*  //
+flush_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  }
+  cairo_surface_t* cs = (cairo_surface_t*)(pb->extra0);
+  if (!cs) {
+    return "main: NULL cairo_surface_t";
+  }
+  cairo_surface_flush(cs);
+  pb->data = cairo_image_surface_get_data(cs);
+  pb->width = width;
+  pb->height = height;
+  return NULL;
+}
+
+const char*  //
+finalize_pixel_buffer(pixel_buffer* pb) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  }
+  if (pb->extra1) {
+    cairo_destroy((cairo_t*)(pb->extra1));
+  }
+  if (pb->extra0) {
+    cairo_surface_destroy((cairo_surface_t*)(pb->extra0));
+  }
+  return NULL;
+}
+
+#else  //  ICONVG_CONFIG__ETC
+
+const char*  //
+initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  }
+  *pb = ((pixel_buffer){0});
+  return NULL;
+}
+
+const char*  //
+flush_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  // flush_pixel_buffer will always fail. Still, this program might be useful
+  // if it prints debug output prior to failure.
+  return "main: no IconVG backend configured";
+}
+
+const char*  //
+finalize_pixel_buffer(pixel_buffer* pb) {
+  return NULL;
+}
+
+#endif  //  ICONVG_CONFIG__ETC
+
+// ----
 
 bool  //
 read_file(size_t* dst_num_bytes_read,
@@ -92,6 +184,60 @@ read_file(size_t* dst_num_bytes_read,
   return true;
 }
 
+// ----
+
+const char*  //
+write_png_to_stdout(pixel_buffer* pb) {
+  if (!pb || (pb->width > 0x7FFF) || (pb->height > 0x7FFF)) {
+    return "main: invalid write_png_to_stdout argument";
+  }
+
+  const char* ret = NULL;
+  png_structp png = NULL;
+  png_infop info = NULL;
+  png_byte** rows = NULL;
+
+  {
+    png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) {
+      ret = "main: png_create_write_struct failed";
+      goto exit;
+    } else if (setjmp(png_jmpbuf(png))) {
+      ret = "main: libpng failed";
+      goto exit;
+    }
+
+    info = png_create_info_struct(png);
+    if (!info) {
+      ret = "main: png_create_info_struct failed";
+      goto exit;
+    }
+
+    rows = malloc(pb->height * sizeof(png_byte*));
+    for (uint32_t i = 0; i < pb->height; i++) {
+      const size_t bytes_per_pixel = 4;
+      rows[i] = pb->data + (i * bytes_per_pixel * pb->width);
+    }
+    png_init_io(png, stdout);
+    png_set_IHDR(png, info, pb->width, pb->height, 8, PNG_COLOR_TYPE_RGBA,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    png_set_rows(png, info, rows);
+    png_write_png(png, info, PNG_TRANSFORM_BGR, NULL);
+  }
+
+exit:
+  if (rows) {
+    free(rows);
+  }
+  if (png) {
+    png_destroy_write_struct(&png, &info);
+  }
+  return ret;
+}
+
+// ----
+
 int  //
 main(int argc, char** argv) {
   // Read the input bytes.
@@ -130,8 +276,10 @@ main(int argc, char** argv) {
   }
 
   // Decode the IconVG viewbox.
+  iconvg_rectangle_f32 viewbox = {0};
+  uint32_t pixel_width = 64;   // TODO.
+  uint32_t pixel_height = 64;  // TODO.
   {
-    iconvg_rectangle_f32 viewbox = {};
     const char* err_msg = iconvg_decode_viewbox(&viewbox, src_ptr, src_len);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
@@ -140,12 +288,57 @@ main(int argc, char** argv) {
     }
   }
 
+  // Initialize the pixel buffer.
+  pixel_buffer pb = {0};
+  {
+    const char* err_msg =
+        initialize_pixel_buffer(&pb, pixel_width, pixel_height);
+    if (err_msg) {
+      fprintf(stderr, "main: could not initialize the pixel buffer\n%s\n",
+              err_msg);
+      return 1;
+    }
+  }
+
   // Decode the IconVG.
   {
-    iconvg_canvas canvas = iconvg_make_debug_canvas(stdout, "debug: ", NULL);
-    const char* err_msg = iconvg_decode(&canvas, src_ptr, src_len, NULL);
+    iconvg_canvas* c = &pb.canvas;
+    iconvg_canvas debug_canvas = iconvg_make_debug_canvas(
+        stderr, "debug: ", pb.canvas.vtable ? &pb.canvas : NULL);
+    if (true) {  // TODO: parse a -debug command line arg.
+      c = &debug_canvas;
+    }
+    const char* err_msg = iconvg_decode(c, src_ptr, src_len, NULL);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,
+              err_msg);
+      return 1;
+    }
+  }
+
+  // Flush the backend-specific drawing ops to the pixel buffer.
+  {
+    const char* err_msg = flush_pixel_buffer(&pb, pixel_width, pixel_height);
+    if (err_msg) {
+      fprintf(stderr, "main: could not flush the pixel buffer\n%s\n", err_msg);
+      return 1;
+    }
+  }
+
+  // Write the PNG to stdout.
+  {
+    const char* err_msg = write_png_to_stdout(&pb);
+    if (err_msg) {
+      fprintf(stderr, "main: could not write the PNG to stdout\n%s\n", err_msg);
+      return 1;
+    }
+  }
+
+  // Finalize the pixel buffer.
+  {
+    const char* err_msg = finalize_pixel_buffer(&pb);
+    if (err_msg) {
+      fprintf(stderr, "main: could not finalize the pixel buffer\n%s\n",
               err_msg);
       return 1;
     }

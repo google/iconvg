@@ -71,8 +71,8 @@
 //
 // bad_etc indicates a file format error. The source bytes are not IconVG.
 //
-// Other errors (invalid_etc, null_etc, unsupported_etc) are typically
-// programming errors instead of file format errors.
+// Other errors (invalid_etc, null_etc, unsupported_etc) are programming errors
+// instead of file format errors.
 
 extern const char iconvg_error_bad_color[];
 extern const char iconvg_error_bad_coordinate[];
@@ -86,6 +86,8 @@ extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
 
+extern const char iconvg_error_invalid_backend_not_enabled[];
+extern const char iconvg_error_invalid_constructor_argument[];
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
@@ -187,6 +189,9 @@ typedef struct iconvg_canvas_vtable_struct {
                             const char* err_msg,
                             size_t num_bytes_consumed,
                             size_t num_bytes_remaining);
+  const char* (*begin_drawing)(struct iconvg_canvas_struct* c);
+  const char* (*end_drawing)(struct iconvg_canvas_struct* c,
+                             const iconvg_paint* p);
   const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
   const char* (*end_path)(struct iconvg_canvas_struct* c);
   const char* (*path_line_to)(struct iconvg_canvas_struct* c,
@@ -212,7 +217,6 @@ typedef struct iconvg_canvas_vtable_struct {
                              bool sweep,
                              float final_x,
                              float final_y);
-  const char* (*paint)(struct iconvg_canvas_struct* c, const iconvg_paint* p);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
@@ -246,6 +250,13 @@ extern "C" {
 bool  //
 iconvg_error_is_file_format_error(const char* err_msg);
 
+// ----
+
+// iconvg_make_broken_canvas returns an iconvg_canvas whose callbacks all do
+// nothing other than return err_msg.
+iconvg_canvas  //
+iconvg_make_broken_canvas(const char* err_msg);
+
 // iconvg_make_debug_canvas returns an iconvg_canvas that logs vtable calls to
 // f before forwarding the call on to the wrapped iconvg_canvas. Log messages
 // are prefixed by message_prefix.
@@ -265,6 +276,22 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
+
+// ----
+
+typedef struct _cairo cairo_t;
+
+// iconvg_make_cairo_canvas returns an iconvg_canvas that is backed by the
+// Cairo graphics library, if the ICONVG_CONFIG__ENABLE_CAIRO_BACKEND macro
+// was defined when the IconVG library was built.
+//
+// If that macro was not defined then the returned value will be broken (with
+// iconvg_error_invalid_backend_not_enabled).
+//
+// If cr is NULL then the returned value will be broken (with
+// iconvg_error_invalid_constructor_argument).
+iconvg_canvas  //
+iconvg_make_cairo_canvas(cairo_t* cr);
 
 // ----
 
@@ -454,6 +481,300 @@ struct iconvg_paint_struct {
   iconvg_palette creg;
   float nreg[64];
 };
+
+// -------------------------------- #include "./broken.c"
+
+static const char*  //
+iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__end_decode(iconvg_canvas* c,
+                                         const char* err_msg,
+                                         size_t num_bytes_consumed,
+                                         size_t num_bytes_remaining) {
+  return err_msg ? err_msg : ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__begin_drawing(iconvg_canvas* c) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__end_drawing(iconvg_canvas* c,
+                                          const iconvg_paint* p) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__end_path(iconvg_canvas* c) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__path_line_to(iconvg_canvas* c,
+                                           float x1,
+                                           float y1) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__path_quad_to(iconvg_canvas* c,
+                                           float x1,
+                                           float y1,
+                                           float x2,
+                                           float y2) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__path_cube_to(iconvg_canvas* c,
+                                           float x1,
+                                           float y1,
+                                           float x2,
+                                           float y2,
+                                           float x3,
+                                           float y3) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__path_arc_to(iconvg_canvas* c,
+                                          float radius_x,
+                                          float radius_y,
+                                          float x_axis_rotation,
+                                          bool large_arc,
+                                          bool sweep,
+                                          float final_x,
+                                          float final_y) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__on_metadata_viewbox(
+    iconvg_canvas* c,
+    iconvg_rectangle_f32 viewbox) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const char*  //
+iconvg_private_broken_canvas__on_metadata_suggested_palette(
+    iconvg_canvas* c,
+    const iconvg_palette* suggested_palette) {
+  return ((const char*)(c->context_const_ptr));
+}
+
+static const iconvg_canvas_vtable  //
+    iconvg_private_broken_canvas_vtable = {
+        sizeof(iconvg_canvas_vtable),
+        &iconvg_private_broken_canvas__begin_decode,
+        &iconvg_private_broken_canvas__end_decode,
+        &iconvg_private_broken_canvas__begin_drawing,
+        &iconvg_private_broken_canvas__end_drawing,
+        &iconvg_private_broken_canvas__begin_path,
+        &iconvg_private_broken_canvas__end_path,
+        &iconvg_private_broken_canvas__path_line_to,
+        &iconvg_private_broken_canvas__path_quad_to,
+        &iconvg_private_broken_canvas__path_cube_to,
+        &iconvg_private_broken_canvas__path_arc_to,
+        &iconvg_private_broken_canvas__on_metadata_viewbox,
+        &iconvg_private_broken_canvas__on_metadata_suggested_palette,
+};
+
+iconvg_canvas  //
+iconvg_make_broken_canvas(const char* err_msg) {
+  iconvg_canvas c;
+  c.vtable = &iconvg_private_broken_canvas_vtable;
+  c.context_nonconst_ptr0 = NULL;
+  c.context_nonconst_ptr1 = NULL;
+  c.context_const_ptr = err_msg;
+  c.context_extra = 0;
+  return c;
+}
+
+// -------------------------------- #include "./cairo.c"
+
+#if !defined(ICONVG_CONFIG__ENABLE_CAIRO_BACKEND)
+
+iconvg_canvas  //
+iconvg_make_cairo_canvas(cairo_t* cr) {
+  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+}
+
+#else  // ICONVG_CONFIG__ENABLE_CAIRO_BACKEND
+
+#include <cairo/cairo.h>
+
+static const char*  //
+iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c) {
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__end_decode(iconvg_canvas* c,
+                                        const char* err_msg,
+                                        size_t num_bytes_consumed,
+                                        size_t num_bytes_remaining) {
+  return err_msg;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__begin_drawing(iconvg_canvas* c) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_new_path(cr);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
+                                         const iconvg_paint* p) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  if (iconvg_paint__is_flat_color(p)) {
+    iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
+    cairo_set_source_rgba(cr, k.rgba[0] / 255.0, k.rgba[1] / 255.0,
+                          k.rgba[2] / 255.0, k.rgba[3] / 255.0);
+  } else {
+    // TODO: gradients.
+    cairo_set_source_rgb(cr, 1, 1, 1);
+  }
+  cairo_fill(cr);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_move_to(cr, x0, y0);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__end_path(iconvg_canvas* c) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_close_path(cr);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__path_line_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_line_to(cr, x1, y1);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__path_quad_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  // Cairo doesn't have explicit support for quadratic Bézier curves, only
+  // linear and cubic ones. However, a "Bézier curve of degree n can be
+  // converted into a Bézier curve of degree n + 1 with the same shape", per
+  // https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Degree_elevation
+  //
+  // Here, we perform "degree elevation" from [x0, x1, x2] to [X0, X1, X2, X3]
+  // = [x0, ((⅓ * x0) + (⅔ * x1)), ((⅔ * x1) + (⅓ * x2)), c2] and likewise for
+  // the y dimension.
+  double X0;
+  double Y0;
+  cairo_get_current_point(cr, &X0, &Y0);
+  double twice_x1 = ((double)x1) * 2;
+  double twice_y1 = ((double)y1) * 2;
+  double X3 = ((double)x2);
+  double Y3 = ((double)y2);
+  double X1 = (X0 + twice_x1) / 3;
+  double Y1 = (Y0 + twice_y1) / 3;
+  double X2 = (X3 + twice_x1) / 3;
+  double Y2 = (Y3 + twice_y1) / 3;
+  cairo_curve_to(cr, X1, Y1, X2, Y2, X3, Y3);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__path_cube_to(iconvg_canvas* c,
+                                          float x1,
+                                          float y1,
+                                          float x2,
+                                          float y2,
+                                          float x3,
+                                          float y3) {
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__path_arc_to(iconvg_canvas* c,
+                                         float radius_x,
+                                         float radius_y,
+                                         float x_axis_rotation,
+                                         bool large_arc,
+                                         bool sweep,
+                                         float final_x,
+                                         float final_y) {
+  // TODO: convert from SVG's parameterization to Cairo's. Until then, we
+  // substitute in a placeholder cairo_line_to.
+  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_line_to(cr, final_x, final_y);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__on_metadata_viewbox(iconvg_canvas* c,
+                                                 iconvg_rectangle_f32 viewbox) {
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_cairo_canvas__on_metadata_suggested_palette(
+    iconvg_canvas* c,
+    const iconvg_palette* suggested_palette) {
+  return NULL;
+}
+
+static const iconvg_canvas_vtable  //
+    iconvg_private_cairo_canvas_vtable = {
+        sizeof(iconvg_canvas_vtable),
+        &iconvg_private_cairo_canvas__begin_decode,
+        &iconvg_private_cairo_canvas__end_decode,
+        &iconvg_private_cairo_canvas__begin_drawing,
+        &iconvg_private_cairo_canvas__end_drawing,
+        &iconvg_private_cairo_canvas__begin_path,
+        &iconvg_private_cairo_canvas__end_path,
+        &iconvg_private_cairo_canvas__path_line_to,
+        &iconvg_private_cairo_canvas__path_quad_to,
+        &iconvg_private_cairo_canvas__path_cube_to,
+        &iconvg_private_cairo_canvas__path_arc_to,
+        &iconvg_private_cairo_canvas__on_metadata_viewbox,
+        &iconvg_private_cairo_canvas__on_metadata_suggested_palette,
+};
+
+iconvg_canvas  //
+iconvg_make_cairo_canvas(cairo_t* cr) {
+  if (!cr) {
+    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+  }
+  iconvg_canvas c;
+  c.vtable = &iconvg_private_cairo_canvas_vtable;
+  c.context_nonconst_ptr0 = cr;
+  c.context_nonconst_ptr1 = NULL;
+  c.context_const_ptr = NULL;
+  c.context_extra = 0;
+  return c;
+}
+
+#endif  // ICONVG_CONFIG__ENABLE_CAIRO_BACKEND
 
 // -------------------------------- #include "./colors.c"
 
@@ -698,6 +1019,48 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
 }
 
 static const char*  //
+iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%sbegin_drawing()\n", ((const char*)(c->context_const_ptr)));
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->begin_drawing)(wrapped);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
+                                         const iconvg_paint* p) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    if (iconvg_paint__is_flat_color(p)) {
+      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
+      fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
+              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
+    } else {
+      // TODO: a more informative printf message.
+      fprintf(f, "%send_drawing(gradient{...})\n",
+              ((const char*)(c->context_const_ptr)));
+    }
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->end_drawing)(wrapped, p);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
@@ -821,31 +1184,6 @@ iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_debug_canvas__paint(iconvg_canvas* c, const iconvg_paint* p) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
-  if (f) {
-    if (iconvg_paint__is_flat_color(p)) {
-      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
-      fprintf(f, "%spaint(flat_color{%02X:%02X:%02X:%02X})\n",
-              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
-              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
-    } else {
-      // TODO: a more informative printf message.
-      fprintf(f, "%spaint(gradient{...})\n",
-              ((const char*)(c->context_const_ptr)));
-    }
-  }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
-  if (!wrapped) {
-    return NULL;
-  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
-             sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
-  }
-  return (*wrapped->vtable->paint)(wrapped, p);
-}
-
-static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -908,13 +1246,14 @@ static const iconvg_canvas_vtable  //
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__begin_drawing,
+        &iconvg_private_debug_canvas__end_drawing,
         &iconvg_private_debug_canvas__begin_path,
         &iconvg_private_debug_canvas__end_path,
         &iconvg_private_debug_canvas__path_line_to,
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__path_arc_to,
-        &iconvg_private_debug_canvas__paint,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
         &iconvg_private_debug_canvas__on_metadata_suggested_palette,
 };
@@ -1344,6 +1683,7 @@ styling_mode:
           !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
         return iconvg_error_bad_coordinate;
       }
+      ICONVG_PRIVATE_TRY((*c->vtable->begin_drawing)(c));
       ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
       x1 = curr_x;
       y1 = curr_y;
@@ -1603,7 +1943,7 @@ drawing_mode:
     switch (opcode) {
       case 0xE1: {  // 'z' mnemonic: close_path.
         ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
-        ICONVG_PRIVATE_TRY((*c->vtable->paint)(c, state));
+        ICONVG_PRIVATE_TRY((*c->vtable->end_drawing)(c, state));
         goto styling_mode;
       }
 
@@ -1870,6 +2210,10 @@ const char iconvg_error_bad_path_unfinished[] =  //
 const char iconvg_error_bad_styling_opcode[] =  //
     "iconvg: bad styling opcode";
 
+const char iconvg_error_invalid_backend_not_enabled[] =  //
+    "iconvg: invalid backend (not enabled)";
+const char iconvg_error_invalid_constructor_argument[] =  //
+    "iconvg: invalid constructor argument";
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //

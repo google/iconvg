@@ -422,6 +422,7 @@ styling_mode:
           !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
         return iconvg_error_bad_coordinate;
       }
+      ICONVG_PRIVATE_TRY((*c->vtable->begin_drawing)(c));
       ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(c, curr_x, curr_y));
       x1 = curr_x;
       y1 = curr_y;
@@ -681,7 +682,7 @@ drawing_mode:
     switch (opcode) {
       case 0xE1: {  // 'z' mnemonic: close_path.
         ICONVG_PRIVATE_TRY((*c->vtable->end_path)(c));
-        ICONVG_PRIVATE_TRY((*c->vtable->paint)(c, state));
+        ICONVG_PRIVATE_TRY((*c->vtable->end_drawing)(c, state));
         goto styling_mode;
       }
 

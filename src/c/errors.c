@@ -35,6 +35,10 @@ const char iconvg_error_bad_path_unfinished[] =  //
 const char iconvg_error_bad_styling_opcode[] =  //
     "iconvg: bad styling opcode";
 
+const char iconvg_error_invalid_backend_not_enabled[] =  //
+    "iconvg: invalid backend (not enabled)";
+const char iconvg_error_invalid_constructor_argument[] =  //
+    "iconvg: invalid constructor argument";
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //

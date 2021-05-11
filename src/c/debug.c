@@ -53,6 +53,48 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
 }
 
 static const char*  //
+iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    fprintf(f, "%sbegin_drawing()\n", ((const char*)(c->context_const_ptr)));
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->begin_drawing)(wrapped);
+}
+
+static const char*  //
+iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
+                                         const iconvg_paint* p) {
+  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  if (f) {
+    if (iconvg_paint__is_flat_color(p)) {
+      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
+      fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
+              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
+    } else {
+      // TODO: a more informative printf message.
+      fprintf(f, "%send_drawing(gradient{...})\n",
+              ((const char*)(c->context_const_ptr)));
+    }
+  }
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  if (!wrapped) {
+    return NULL;
+  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
+             sizeof(iconvg_canvas_vtable)) {
+    return iconvg_error_unsupported_vtable;
+  }
+  return (*wrapped->vtable->end_drawing)(wrapped, p);
+}
+
+static const char*  //
 iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
@@ -176,31 +218,6 @@ iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_debug_canvas__paint(iconvg_canvas* c, const iconvg_paint* p) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
-  if (f) {
-    if (iconvg_paint__is_flat_color(p)) {
-      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
-      fprintf(f, "%spaint(flat_color{%02X:%02X:%02X:%02X})\n",
-              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
-              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
-    } else {
-      // TODO: a more informative printf message.
-      fprintf(f, "%spaint(gradient{...})\n",
-              ((const char*)(c->context_const_ptr)));
-    }
-  }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
-  if (!wrapped) {
-    return NULL;
-  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
-             sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
-  }
-  return (*wrapped->vtable->paint)(wrapped, p);
-}
-
-static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -263,13 +280,14 @@ static const iconvg_canvas_vtable  //
         sizeof(iconvg_canvas_vtable),
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
+        &iconvg_private_debug_canvas__begin_drawing,
+        &iconvg_private_debug_canvas__end_drawing,
         &iconvg_private_debug_canvas__begin_path,
         &iconvg_private_debug_canvas__end_path,
         &iconvg_private_debug_canvas__path_line_to,
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
         &iconvg_private_debug_canvas__path_arc_to,
-        &iconvg_private_debug_canvas__paint,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
         &iconvg_private_debug_canvas__on_metadata_suggested_palette,
 };

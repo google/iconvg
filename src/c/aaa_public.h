@@ -25,8 +25,8 @@
 //
 // bad_etc indicates a file format error. The source bytes are not IconVG.
 //
-// Other errors (invalid_etc, null_etc, unsupported_etc) are typically
-// programming errors instead of file format errors.
+// Other errors (invalid_etc, null_etc, unsupported_etc) are programming errors
+// instead of file format errors.
 
 extern const char iconvg_error_bad_color[];
 extern const char iconvg_error_bad_coordinate[];
@@ -40,6 +40,8 @@ extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
 
+extern const char iconvg_error_invalid_backend_not_enabled[];
+extern const char iconvg_error_invalid_constructor_argument[];
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
@@ -141,6 +143,9 @@ typedef struct iconvg_canvas_vtable_struct {
                             const char* err_msg,
                             size_t num_bytes_consumed,
                             size_t num_bytes_remaining);
+  const char* (*begin_drawing)(struct iconvg_canvas_struct* c);
+  const char* (*end_drawing)(struct iconvg_canvas_struct* c,
+                             const iconvg_paint* p);
   const char* (*begin_path)(struct iconvg_canvas_struct* c, float x0, float y0);
   const char* (*end_path)(struct iconvg_canvas_struct* c);
   const char* (*path_line_to)(struct iconvg_canvas_struct* c,
@@ -166,7 +171,6 @@ typedef struct iconvg_canvas_vtable_struct {
                              bool sweep,
                              float final_x,
                              float final_y);
-  const char* (*paint)(struct iconvg_canvas_struct* c, const iconvg_paint* p);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
@@ -200,6 +204,13 @@ extern "C" {
 bool  //
 iconvg_error_is_file_format_error(const char* err_msg);
 
+// ----
+
+// iconvg_make_broken_canvas returns an iconvg_canvas whose callbacks all do
+// nothing other than return err_msg.
+iconvg_canvas  //
+iconvg_make_broken_canvas(const char* err_msg);
+
 // iconvg_make_debug_canvas returns an iconvg_canvas that logs vtable calls to
 // f before forwarding the call on to the wrapped iconvg_canvas. Log messages
 // are prefixed by message_prefix.
@@ -219,6 +230,22 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
+
+// ----
+
+typedef struct _cairo cairo_t;
+
+// iconvg_make_cairo_canvas returns an iconvg_canvas that is backed by the
+// Cairo graphics library, if the ICONVG_CONFIG__ENABLE_CAIRO_BACKEND macro
+// was defined when the IconVG library was built.
+//
+// If that macro was not defined then the returned value will be broken (with
+// iconvg_error_invalid_backend_not_enabled).
+//
+// If cr is NULL then the returned value will be broken (with
+// iconvg_error_invalid_constructor_argument).
+iconvg_canvas  //
+iconvg_make_cairo_canvas(cairo_t* cr);
 
 // ----
 
