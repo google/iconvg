@@ -275,8 +275,8 @@ main(int argc, char** argv) {
 
   // Decode the IconVG viewbox.
   iconvg_rectangle_f32 viewbox = {0};
-  uint32_t pixel_width = 64;   // TODO.
-  uint32_t pixel_height = 64;  // TODO.
+  uint32_t pixel_width = 256;   // TODO
+  uint32_t pixel_height = 256;  // TODO
   {
     const char* err_msg = iconvg_decode_viewbox(&viewbox, src_ptr, src_len);
     if (err_msg) {
