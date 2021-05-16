@@ -511,10 +511,10 @@ iconvg_private_peek_u32le(const uint8_t* p) {
 
 static inline void  //
 iconvg_private_poke_u32le(uint8_t* p, uint32_t x) {
-  p[0] = (uint8_t)(x >> 24);
-  p[1] = (uint8_t)(x >> 16);
-  p[2] = (uint8_t)(x >> 8);
-  p[3] = (uint8_t)(x >> 0);
+  p[0] = (uint8_t)(x >> 0);
+  p[1] = (uint8_t)(x >> 8);
+  p[2] = (uint8_t)(x >> 16);
+  p[3] = (uint8_t)(x >> 24);
 }
 
 static inline float  //
