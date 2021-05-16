@@ -293,9 +293,9 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float y3 = +0.0f;
   uint32_t flags = 0;
 
-  double scale_x = +0.0;
-  double scale_y = +0.0;
+  double scale_x = +1.0;
   double bias_x = +0.0;
+  double scale_y = +1.0;
   double bias_y = +0.0;
   {
     double rw = iconvg_rectangle_f32__width_f64(&r);
@@ -309,6 +309,14 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
       bias_y = r.min_y - (state->viewbox.min_y * scale_y);
     }
   }
+  state->s2d_scale_x = scale_x;
+  state->s2d_bias_x = bias_x;
+  state->s2d_scale_y = scale_y;
+  state->s2d_bias_y = bias_y;
+  state->d2s_scale_x = 1.0 / scale_x;
+  state->d2s_bias_x = -bias_x * state->d2s_scale_x;
+  state->d2s_scale_y = 1.0 / scale_y;
+  state->d2s_bias_y = -bias_y * state->d2s_scale_y;
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
@@ -436,6 +444,11 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xC7) {  // Switch to the drawing mode.
+      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
+             sizeof(state->paint_rgba));
+      if (iconvg_paint__type(state) == ICONVG_PAINT_TYPE__INVALID) {
+        return iconvg_error_invalid_paint_type;
+      }
       if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
           !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
         return iconvg_error_bad_coordinate;
@@ -447,8 +460,6 @@ styling_mode:
                                    (curr_y * scale_y) + bias_y));
       x1 = curr_x;
       y1 = curr_y;
-      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
-             sizeof(state->paint_rgba));
       // TODO: if H is outside the LOD range then skip the drawing.
       goto drawing_mode;
 
@@ -979,6 +990,15 @@ iconvg_private_decode(iconvg_canvas* c,
 
   memcpy(&state.creg, &state.custom_palette, sizeof(state.creg));
   memset(&state.nreg[0], 0, sizeof(state.nreg));
+  state.s2d_scale_x = +1.0;
+  state.s2d_bias_x = +0.0;
+  state.s2d_scale_y = +1.0;
+  state.s2d_bias_y = +0.0;
+  state.d2s_scale_x = +1.0;
+  state.d2s_bias_x = +0.0;
+  state.d2s_scale_y = +1.0;
+  state.d2s_bias_y = +0.0;
+
   return iconvg_private_execute_bytecode(c, r, d, &state);
 }
 

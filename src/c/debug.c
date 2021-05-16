@@ -74,17 +74,41 @@ iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
 static const char*  //
 iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
+  static const char* spread_names[4] = {"none", "pad", "reflect", "repeat"};
+
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
-    if (iconvg_paint__is_flat_color(p)) {
-      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
-      fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
-              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
-              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
-    } else {
-      // TODO: a more informative printf message.
-      fprintf(f, "%send_drawing(gradient{...})\n",
-              ((const char*)(c->context_const_ptr)));
+    switch (iconvg_paint__type(p)) {
+      case ICONVG_PAINT_TYPE__FLAT_COLOR: {
+        iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
+        fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
+                ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+                ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
+        fprintf(f,
+                "%send_drawing(linear_gradient{nstops=%d, spread=%s, ...})\n",
+                ((const char*)(c->context_const_ptr)),
+                ((int)(iconvg_paint__gradient_number_of_stops(p))),
+                spread_names[iconvg_paint__gradient_spread(p)]);
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
+        fprintf(f,
+                "%send_drawing(radial_gradient{nstops=%d, spread=%s, ...})\n",
+                ((const char*)(c->context_const_ptr)),
+                ((int)(iconvg_paint__gradient_number_of_stops(p))),
+                spread_names[iconvg_paint__gradient_spread(p)]);
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__INVALID:
+      default: {
+        return iconvg_error_invalid_paint_type;
+      }
     }
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);

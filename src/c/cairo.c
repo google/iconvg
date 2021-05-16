@@ -23,6 +23,79 @@ iconvg_make_cairo_canvas(cairo_t* cr) {
 
 #include <cairo/cairo.h>
 
+static const cairo_extend_t
+    iconvg_private_gradient_spread_as_cairo_extend_t[4] = {
+        CAIRO_EXTEND_NONE,     //
+        CAIRO_EXTEND_PAD,      //
+        CAIRO_EXTEND_REFLECT,  //
+        CAIRO_EXTEND_REPEAT    //
+};
+
+static inline cairo_matrix_t  //
+iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(iconvg_matrix_2x3_f64 i) {
+  cairo_matrix_t c;
+  c.xx = i.elems[0][0];
+  c.xy = i.elems[0][1];
+  c.x0 = i.elems[0][2];
+  c.yx = i.elems[1][0];
+  c.yy = i.elems[1][1];
+  c.y0 = i.elems[1][2];
+  return c;
+}
+
+// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row is like
+// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t but overrides the bottom row
+// of the 2x3 transformation matrix.
+//
+// IconVG linear gradients range from x=0 to x=1 in pattern space, independent
+// of y. The bottom row therefore doesn't matter (because it's "independent of
+// y") and can be [0, 0, 0] in the IconVG file format. However, Cairo needs the
+// matrix to be invertible, so we override the bottom row with dummy values,
+// like [1, 0, 0] or [0, 1, 0], so that the matrix determinant ((c.xx * c.yy) -
+// (c.xy * c.yx)) is non-zero.
+static inline cairo_matrix_t  //
+iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
+    iconvg_matrix_2x3_f64 i) {
+  cairo_matrix_t c;
+  c.xx = i.elems[0][0];
+  c.xy = i.elems[0][1];
+  c.x0 = i.elems[0][2];
+
+  if (c.xx != 0) {
+    c.yx = 0.0;
+    c.yy = 1.0;
+    c.y0 = 0.0;
+  } else if (c.xy != 0) {
+    c.yx = 1.0;
+    c.yy = 0.0;
+    c.y0 = 0.0;
+  } else {
+    // 1e-10 is arbitrary but very small and squaring it still gives
+    // something larger than FLT_MIN, approximately 1.175494e-38.
+    c.xx = 1e-10;
+    c.xy = 0.0;
+    // cx0 is unchanged.
+    c.yx = 0.0;
+    c.yy = 1e-10;
+    c.y0 = 0.0;
+  }
+  return c;
+}
+
+static void  //
+iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
+                                        const iconvg_paint* p) {
+  uint32_t n = iconvg_paint__gradient_number_of_stops(p);
+  for (uint32_t i = 0; i < n; i++) {
+    float offset = iconvg_paint__gradient_stop_offset(p, i);
+    iconvg_nonpremul_color k =
+        iconvg_paint__gradient_stop_color_as_nonpremul_color(p, i);
+    cairo_pattern_add_color_stop_rgba(cp, offset, k.rgba[0] / 255.0,
+                                      k.rgba[1] / 255.0, k.rgba[2] / 255.0,
+                                      k.rgba[3] / 255.0);
+  }
+}
+
 static const char*  //
 iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
                                           iconvg_rectangle_f32 dst_rect) {
@@ -56,15 +129,51 @@ static const char*  //
 iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
   cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
-  if (iconvg_paint__is_flat_color(p)) {
-    iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
-    cairo_set_source_rgba(cr, k.rgba[0] / 255.0, k.rgba[1] / 255.0,
-                          k.rgba[2] / 255.0, k.rgba[3] / 255.0);
-  } else {
-    // TODO: gradients.
-    cairo_set_source_rgb(cr, 1, 1, 1);
+  cairo_pattern_t* cp = NULL;
+  cairo_matrix_t cm = {0};
+
+  switch (iconvg_paint__type(p)) {
+    case ICONVG_PAINT_TYPE__FLAT_COLOR: {
+      iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
+      cairo_set_source_rgba(cr, k.rgba[0] / 255.0, k.rgba[1] / 255.0,
+                            k.rgba[2] / 255.0, k.rgba[3] / 255.0);
+      cairo_fill(cr);
+      return NULL;
+    }
+
+    case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
+      cp = cairo_pattern_create_linear(0, 0, 1, 0);
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
+          iconvg_paint__gradient_transformation_matrix(p));
+      break;
+    }
+
+    case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
+      cp = cairo_pattern_create_radial(0, 0, 0, 0, 0, 1);
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(
+          iconvg_paint__gradient_transformation_matrix(p));
+      break;
+    }
+
+    default:
+      return iconvg_error_invalid_paint_type;
   }
+
+  cairo_pattern_set_matrix(cp, &cm);
+  cairo_pattern_set_extend(cp, iconvg_private_gradient_spread_as_cairo_extend_t
+                                   [iconvg_paint__gradient_spread(p)]);
+  iconvg_private_cairo_set_gradient_stops(cp, p);
+  if (cairo_pattern_status(cp) == CAIRO_STATUS_SUCCESS) {
+    cairo_set_source(cr, cp);
+  } else {
+    // Substitute in a 50% transparent grayish purple so that "something is
+    // wrong with the Cairo pattern" is hopefully visible without abandoning
+    // the graphic entirely.
+    cairo_set_source_rgba(cr, 0.75, 0.25, 0.75, 0.5);
+  }
+
   cairo_fill(cr);
+  cairo_pattern_destroy(cp);
   return NULL;
 }
 

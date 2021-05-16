@@ -39,6 +39,8 @@ const char iconvg_error_invalid_backend_not_enabled[] =  //
     "iconvg: invalid backend (not enabled)";
 const char iconvg_error_invalid_constructor_argument[] =  //
     "iconvg: invalid constructor argument";
+const char iconvg_error_invalid_paint_type[] =  //
+    "iconvg: invalid paint type";
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //

@@ -42,15 +42,16 @@ extern const char iconvg_error_bad_styling_opcode[];
 
 extern const char iconvg_error_invalid_backend_not_enabled[];
 extern const char iconvg_error_invalid_constructor_argument[];
+extern const char iconvg_error_invalid_paint_type[];
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
 // ----
 
-// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 co-ordinates.
+// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 coordinates.
 //
-// It is valid for a minimum co-ordinate to be greater than or equal to the
-// corresponding maximum, or for any co-ordinate to be NaN, in which case the
+// It is valid for a minimum coordinate to be greater than or equal to the
+// corresponding maximum, or for any coordinate to be NaN, in which case the
 // rectangle is empty. There are multiple ways to represent an empty rectangle
 // but the canonical representation has all fields set to positive zero.
 typedef struct iconvg_rectangle_f32_struct {
@@ -60,6 +61,7 @@ typedef struct iconvg_rectangle_f32_struct {
   float max_y;
 } iconvg_rectangle_f32;
 
+// iconvg_make_rectangle_f32 is an iconvg_rectangle_f32 constructor.
 static inline iconvg_rectangle_f32  //
 iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
   iconvg_rectangle_f32 r;
@@ -98,11 +100,59 @@ typedef struct iconvg_palette_struct {
 
 // ----
 
+typedef enum iconvg_paint_type_enum {
+  ICONVG_PAINT_TYPE__INVALID = 0,
+  ICONVG_PAINT_TYPE__FLAT_COLOR = 1,
+  ICONVG_PAINT_TYPE__LINEAR_GRADIENT = 2,
+  ICONVG_PAINT_TYPE__RADIAL_GRADIENT = 3,
+} iconvg_paint_type;
+
+typedef enum iconvg_gradient_spread {
+  ICONVG_GRADIENT_SPREAD__NONE = 0,
+  ICONVG_GRADIENT_SPREAD__PAD = 1,
+  ICONVG_GRADIENT_SPREAD__REFLECT = 2,
+  ICONVG_GRADIENT_SPREAD__REPEAT = 3,
+} iconvg_gradient_spread;
+
 struct iconvg_paint_struct;
 
 // iconvg_paint is an opaque data structure passed to iconvg_canvas_vtable's
 // paint method.
 typedef struct iconvg_paint_struct iconvg_paint;
+
+// ----
+
+// iconvg_matrix_2x3_f64 is an affine transformation matrix. The elements are
+// given in row-major order:
+//
+//   elems[0][0]  elems[0][1]  elems[0][2]
+//   elems[1][0]  elems[1][1]  elems[1][2]
+//
+// Matrix multiplication transforms (old_x, old_y) to produce (new_x, new_y):
+//
+//   new_x = (old_x * elems[0][0]) + (old_y * elems[0][1]) + elems[0][2]
+//   new_y = (old_x * elems[1][0]) + (old_y * elems[1][1]) + elems[1][2]
+typedef struct iconvg_matrix_2x3_f64_struct {
+  double elems[2][3];
+} iconvg_matrix_2x3_f64;
+
+// iconvg_make_matrix_2x3_f64 is an iconvg_matrix_2x3_f64 constructor.
+static inline iconvg_matrix_2x3_f64  //
+iconvg_make_matrix_2x3_f64(double elems00,
+                           double elems01,
+                           double elems02,
+                           double elems10,
+                           double elems11,
+                           double elems12) {
+  iconvg_matrix_2x3_f64 m;
+  m.elems[0][0] = elems00;
+  m.elems[0][1] = elems01;
+  m.elems[0][2] = elems02;
+  m.elems[1][0] = elems10;
+  m.elems[1][1] = elems11;
+  m.elems[1][2] = elems12;
+  return m;
+}
 
 // ----
 
@@ -294,24 +344,82 @@ iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
 
 // ----
 
-// iconvg_paint__is_flat_color returns whether self is a flat color (as opposed
-// to a gradient).
-bool  //
-iconvg_paint__is_flat_color(const iconvg_paint* self);
+// iconvg_paint__type returns what type of paint self is.
+iconvg_paint_type  //
+iconvg_paint__type(const iconvg_paint* self);
 
 // iconvg_paint__flat_color_as_nonpremul_color returns self's color (as non-
 // alpha-premultiplied), assuming that self is a flat color.
 //
-// If self is not a flat color than the result may be a non-sensical color.
+// If self is not a flat color then the result may be a non-sensical color.
 iconvg_nonpremul_color  //
 iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self);
 
 // iconvg_paint__flat_color_as_premul_color returns self's color (as alpha-
 // premultiplied), assuming that self is a flat color.
 //
-// If self is not a flat color than the result may be a non-sensical color.
+// If self is not a flat color then the result may be a non-sensical color.
 iconvg_premul_color  //
 iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self);
+
+// iconvg_gradient_spread returns how self is painted for offsets outside of
+// the 0.0 ..= 1.0 range.
+//
+// If self is not a gradient then the result will still be a valid enum value
+// but otherwise non-sensical.
+iconvg_gradient_spread  //
+iconvg_paint__gradient_spread(const iconvg_paint* self);
+
+// iconvg_paint__gradient_number_of_stops returns self's number of gradient
+// stops, also known as N in sibling functions' documentation. The number will
+// be in the range 0 ..= 63 inclusive.
+//
+// If self is not a gradient then the result will still be less than 64 but
+// otherwise non-sensical.
+uint32_t  //
+iconvg_paint__gradient_number_of_stops(const iconvg_paint* self);
+
+// iconvg_paint__gradient_stop_color_as_premul_color returns the color (as non-
+// alpha-premultiplied) of the I'th gradient stop, if I < N, where I =
+// which_stop and N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical color.
+iconvg_nonpremul_color  //
+iconvg_paint__gradient_stop_color_as_nonpremul_color(const iconvg_paint* self,
+                                                     uint32_t which_stop);
+
+// iconvg_paint__gradient_stop_color_as_premul_color returns the color (as
+// alpha-premultiplied) of the I'th gradient stop, if I < N, where I =
+// which_stop and N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical color.
+iconvg_premul_color  //
+iconvg_paint__gradient_stop_color_as_premul_color(const iconvg_paint* self,
+                                                  uint32_t which_stop);
+
+// iconvg_paint__gradient_stop_offset returns the offset (in the range 0.0 ..=
+// 1.0 inclusive) of the I'th gradient stop, if I < N, where I = which_stop and
+// N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical number.
+float  //
+iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
+                                   uint32_t which_stop);
+
+// iconvg_paint__gradient_transformation_matrix returns the affine
+// transformation matrix that converts from dst coordinate space (also known as
+// user or canvas coordinate space) to pattern coordinate space (also known as
+// paint or gradient coordinate space).
+//
+// Pattern coordinate space is where linear gradients always range from x=0 to
+// x=1 and radial gradients are always centre=(0,0) and radius=1.
+//
+// If self is not a gradient then the result may be non-sensical.
+iconvg_matrix_2x3_f64  //
+iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self);
 
 // ----
 

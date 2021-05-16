@@ -129,4 +129,29 @@ struct iconvg_paint_struct {
   iconvg_palette custom_palette;
   iconvg_palette creg;
   float nreg[64];
+
+  // Scale and bias convert between dst coordinates (what this library calls
+  // user or canvas coordinate space) and src coordinates (what this library
+  // calls viewbox or graphic coordinate space). When converting from p to q:
+  //
+  //   q_x = (p_x * p2q_scale_x) + p2q_bias_x
+  //   q_y = (p_y * p2q_scale_y) + p2q_bias_y
+  //
+  // For example, an IconVG file might declare its viewbox ranging from -32 to
+  // +32 along the X axis, in ideal (not pixel) space. The user might rasterize
+  // this on screen from x=400 to x=500, 100 pixels wide. This corresponds to
+  // s2d_scale_x = (100 / (+32 - -32)) = 1.5625 and s2d_bias_x = 450, because:
+  //
+  //   400 = ((-32) * 1.5625) + 450
+  //   500 = ((+32) * 1.5625) + 450
+
+  double s2d_scale_x;
+  double s2d_bias_x;
+  double s2d_scale_y;
+  double s2d_bias_y;
+
+  double d2s_scale_x;
+  double d2s_bias_x;
+  double d2s_scale_y;
+  double d2s_bias_y;
 };

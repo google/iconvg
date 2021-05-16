@@ -88,15 +88,16 @@ extern const char iconvg_error_bad_styling_opcode[];
 
 extern const char iconvg_error_invalid_backend_not_enabled[];
 extern const char iconvg_error_invalid_constructor_argument[];
+extern const char iconvg_error_invalid_paint_type[];
 extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
 // ----
 
-// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 co-ordinates.
+// iconvg_rectangle_f32 is an axis-aligned rectangle with float32 coordinates.
 //
-// It is valid for a minimum co-ordinate to be greater than or equal to the
-// corresponding maximum, or for any co-ordinate to be NaN, in which case the
+// It is valid for a minimum coordinate to be greater than or equal to the
+// corresponding maximum, or for any coordinate to be NaN, in which case the
 // rectangle is empty. There are multiple ways to represent an empty rectangle
 // but the canonical representation has all fields set to positive zero.
 typedef struct iconvg_rectangle_f32_struct {
@@ -106,6 +107,7 @@ typedef struct iconvg_rectangle_f32_struct {
   float max_y;
 } iconvg_rectangle_f32;
 
+// iconvg_make_rectangle_f32 is an iconvg_rectangle_f32 constructor.
 static inline iconvg_rectangle_f32  //
 iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
   iconvg_rectangle_f32 r;
@@ -144,11 +146,59 @@ typedef struct iconvg_palette_struct {
 
 // ----
 
+typedef enum iconvg_paint_type_enum {
+  ICONVG_PAINT_TYPE__INVALID = 0,
+  ICONVG_PAINT_TYPE__FLAT_COLOR = 1,
+  ICONVG_PAINT_TYPE__LINEAR_GRADIENT = 2,
+  ICONVG_PAINT_TYPE__RADIAL_GRADIENT = 3,
+} iconvg_paint_type;
+
+typedef enum iconvg_gradient_spread {
+  ICONVG_GRADIENT_SPREAD__NONE = 0,
+  ICONVG_GRADIENT_SPREAD__PAD = 1,
+  ICONVG_GRADIENT_SPREAD__REFLECT = 2,
+  ICONVG_GRADIENT_SPREAD__REPEAT = 3,
+} iconvg_gradient_spread;
+
 struct iconvg_paint_struct;
 
 // iconvg_paint is an opaque data structure passed to iconvg_canvas_vtable's
 // paint method.
 typedef struct iconvg_paint_struct iconvg_paint;
+
+// ----
+
+// iconvg_matrix_2x3_f64 is an affine transformation matrix. The elements are
+// given in row-major order:
+//
+//   elems[0][0]  elems[0][1]  elems[0][2]
+//   elems[1][0]  elems[1][1]  elems[1][2]
+//
+// Matrix multiplication transforms (old_x, old_y) to produce (new_x, new_y):
+//
+//   new_x = (old_x * elems[0][0]) + (old_y * elems[0][1]) + elems[0][2]
+//   new_y = (old_x * elems[1][0]) + (old_y * elems[1][1]) + elems[1][2]
+typedef struct iconvg_matrix_2x3_f64_struct {
+  double elems[2][3];
+} iconvg_matrix_2x3_f64;
+
+// iconvg_make_matrix_2x3_f64 is an iconvg_matrix_2x3_f64 constructor.
+static inline iconvg_matrix_2x3_f64  //
+iconvg_make_matrix_2x3_f64(double elems00,
+                           double elems01,
+                           double elems02,
+                           double elems10,
+                           double elems11,
+                           double elems12) {
+  iconvg_matrix_2x3_f64 m;
+  m.elems[0][0] = elems00;
+  m.elems[0][1] = elems01;
+  m.elems[0][2] = elems02;
+  m.elems[1][0] = elems10;
+  m.elems[1][1] = elems11;
+  m.elems[1][2] = elems12;
+  return m;
+}
 
 // ----
 
@@ -340,24 +390,82 @@ iconvg_decode_viewbox(iconvg_rectangle_f32* dst_viewbox,
 
 // ----
 
-// iconvg_paint__is_flat_color returns whether self is a flat color (as opposed
-// to a gradient).
-bool  //
-iconvg_paint__is_flat_color(const iconvg_paint* self);
+// iconvg_paint__type returns what type of paint self is.
+iconvg_paint_type  //
+iconvg_paint__type(const iconvg_paint* self);
 
 // iconvg_paint__flat_color_as_nonpremul_color returns self's color (as non-
 // alpha-premultiplied), assuming that self is a flat color.
 //
-// If self is not a flat color than the result may be a non-sensical color.
+// If self is not a flat color then the result may be a non-sensical color.
 iconvg_nonpremul_color  //
 iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self);
 
 // iconvg_paint__flat_color_as_premul_color returns self's color (as alpha-
 // premultiplied), assuming that self is a flat color.
 //
-// If self is not a flat color than the result may be a non-sensical color.
+// If self is not a flat color then the result may be a non-sensical color.
 iconvg_premul_color  //
 iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self);
+
+// iconvg_gradient_spread returns how self is painted for offsets outside of
+// the 0.0 ..= 1.0 range.
+//
+// If self is not a gradient then the result will still be a valid enum value
+// but otherwise non-sensical.
+iconvg_gradient_spread  //
+iconvg_paint__gradient_spread(const iconvg_paint* self);
+
+// iconvg_paint__gradient_number_of_stops returns self's number of gradient
+// stops, also known as N in sibling functions' documentation. The number will
+// be in the range 0 ..= 63 inclusive.
+//
+// If self is not a gradient then the result will still be less than 64 but
+// otherwise non-sensical.
+uint32_t  //
+iconvg_paint__gradient_number_of_stops(const iconvg_paint* self);
+
+// iconvg_paint__gradient_stop_color_as_premul_color returns the color (as non-
+// alpha-premultiplied) of the I'th gradient stop, if I < N, where I =
+// which_stop and N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical color.
+iconvg_nonpremul_color  //
+iconvg_paint__gradient_stop_color_as_nonpremul_color(const iconvg_paint* self,
+                                                     uint32_t which_stop);
+
+// iconvg_paint__gradient_stop_color_as_premul_color returns the color (as
+// alpha-premultiplied) of the I'th gradient stop, if I < N, where I =
+// which_stop and N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical color.
+iconvg_premul_color  //
+iconvg_paint__gradient_stop_color_as_premul_color(const iconvg_paint* self,
+                                                  uint32_t which_stop);
+
+// iconvg_paint__gradient_stop_offset returns the offset (in the range 0.0 ..=
+// 1.0 inclusive) of the I'th gradient stop, if I < N, where I = which_stop and
+// N is the result of iconvg_paint__gradient_number_of_stops.
+//
+// If self is not a gradient, or if I >= N, then the result may be a
+// non-sensical number.
+float  //
+iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
+                                   uint32_t which_stop);
+
+// iconvg_paint__gradient_transformation_matrix returns the affine
+// transformation matrix that converts from dst coordinate space (also known as
+// user or canvas coordinate space) to pattern coordinate space (also known as
+// paint or gradient coordinate space).
+//
+// Pattern coordinate space is where linear gradients always range from x=0 to
+// x=1 and radial gradients are always centre=(0,0) and radius=1.
+//
+// If self is not a gradient then the result may be non-sensical.
+iconvg_matrix_2x3_f64  //
+iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self);
 
 // ----
 
@@ -493,6 +601,31 @@ struct iconvg_paint_struct {
   iconvg_palette custom_palette;
   iconvg_palette creg;
   float nreg[64];
+
+  // Scale and bias convert between dst coordinates (what this library calls
+  // user or canvas coordinate space) and src coordinates (what this library
+  // calls viewbox or graphic coordinate space). When converting from p to q:
+  //
+  //   q_x = (p_x * p2q_scale_x) + p2q_bias_x
+  //   q_y = (p_y * p2q_scale_y) + p2q_bias_y
+  //
+  // For example, an IconVG file might declare its viewbox ranging from -32 to
+  // +32 along the X axis, in ideal (not pixel) space. The user might rasterize
+  // this on screen from x=400 to x=500, 100 pixels wide. This corresponds to
+  // s2d_scale_x = (100 / (+32 - -32)) = 1.5625 and s2d_bias_x = 450, because:
+  //
+  //   400 = ((-32) * 1.5625) + 450
+  //   500 = ((+32) * 1.5625) + 450
+
+  double s2d_scale_x;
+  double s2d_bias_x;
+  double s2d_scale_y;
+  double s2d_bias_y;
+
+  double d2s_scale_x;
+  double d2s_bias_x;
+  double d2s_scale_y;
+  double d2s_bias_y;
 };
 
 // -------------------------------- #include "./broken.c"
@@ -626,6 +759,79 @@ iconvg_make_cairo_canvas(cairo_t* cr) {
 
 #include <cairo/cairo.h>
 
+static const cairo_extend_t
+    iconvg_private_gradient_spread_as_cairo_extend_t[4] = {
+        CAIRO_EXTEND_NONE,     //
+        CAIRO_EXTEND_PAD,      //
+        CAIRO_EXTEND_REFLECT,  //
+        CAIRO_EXTEND_REPEAT    //
+};
+
+static inline cairo_matrix_t  //
+iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(iconvg_matrix_2x3_f64 i) {
+  cairo_matrix_t c;
+  c.xx = i.elems[0][0];
+  c.xy = i.elems[0][1];
+  c.x0 = i.elems[0][2];
+  c.yx = i.elems[1][0];
+  c.yy = i.elems[1][1];
+  c.y0 = i.elems[1][2];
+  return c;
+}
+
+// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row is like
+// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t but overrides the bottom row
+// of the 2x3 transformation matrix.
+//
+// IconVG linear gradients range from x=0 to x=1 in pattern space, independent
+// of y. The bottom row therefore doesn't matter (because it's "independent of
+// y") and can be [0, 0, 0] in the IconVG file format. However, Cairo needs the
+// matrix to be invertible, so we override the bottom row with dummy values,
+// like [1, 0, 0] or [0, 1, 0], so that the matrix determinant ((c.xx * c.yy) -
+// (c.xy * c.yx)) is non-zero.
+static inline cairo_matrix_t  //
+iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
+    iconvg_matrix_2x3_f64 i) {
+  cairo_matrix_t c;
+  c.xx = i.elems[0][0];
+  c.xy = i.elems[0][1];
+  c.x0 = i.elems[0][2];
+
+  if (c.xx != 0) {
+    c.yx = 0.0;
+    c.yy = 1.0;
+    c.y0 = 0.0;
+  } else if (c.xy != 0) {
+    c.yx = 1.0;
+    c.yy = 0.0;
+    c.y0 = 0.0;
+  } else {
+    // 1e-10 is arbitrary but very small and squaring it still gives
+    // something larger than FLT_MIN, approximately 1.175494e-38.
+    c.xx = 1e-10;
+    c.xy = 0.0;
+    // cx0 is unchanged.
+    c.yx = 0.0;
+    c.yy = 1e-10;
+    c.y0 = 0.0;
+  }
+  return c;
+}
+
+static void  //
+iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
+                                        const iconvg_paint* p) {
+  uint32_t n = iconvg_paint__gradient_number_of_stops(p);
+  for (uint32_t i = 0; i < n; i++) {
+    float offset = iconvg_paint__gradient_stop_offset(p, i);
+    iconvg_nonpremul_color k =
+        iconvg_paint__gradient_stop_color_as_nonpremul_color(p, i);
+    cairo_pattern_add_color_stop_rgba(cp, offset, k.rgba[0] / 255.0,
+                                      k.rgba[1] / 255.0, k.rgba[2] / 255.0,
+                                      k.rgba[3] / 255.0);
+  }
+}
+
 static const char*  //
 iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
                                           iconvg_rectangle_f32 dst_rect) {
@@ -659,15 +865,51 @@ static const char*  //
 iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
   cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
-  if (iconvg_paint__is_flat_color(p)) {
-    iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
-    cairo_set_source_rgba(cr, k.rgba[0] / 255.0, k.rgba[1] / 255.0,
-                          k.rgba[2] / 255.0, k.rgba[3] / 255.0);
-  } else {
-    // TODO: gradients.
-    cairo_set_source_rgb(cr, 1, 1, 1);
+  cairo_pattern_t* cp = NULL;
+  cairo_matrix_t cm = {0};
+
+  switch (iconvg_paint__type(p)) {
+    case ICONVG_PAINT_TYPE__FLAT_COLOR: {
+      iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
+      cairo_set_source_rgba(cr, k.rgba[0] / 255.0, k.rgba[1] / 255.0,
+                            k.rgba[2] / 255.0, k.rgba[3] / 255.0);
+      cairo_fill(cr);
+      return NULL;
+    }
+
+    case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
+      cp = cairo_pattern_create_linear(0, 0, 1, 0);
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
+          iconvg_paint__gradient_transformation_matrix(p));
+      break;
+    }
+
+    case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
+      cp = cairo_pattern_create_radial(0, 0, 0, 0, 0, 1);
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(
+          iconvg_paint__gradient_transformation_matrix(p));
+      break;
+    }
+
+    default:
+      return iconvg_error_invalid_paint_type;
   }
+
+  cairo_pattern_set_matrix(cp, &cm);
+  cairo_pattern_set_extend(cp, iconvg_private_gradient_spread_as_cairo_extend_t
+                                   [iconvg_paint__gradient_spread(p)]);
+  iconvg_private_cairo_set_gradient_stops(cp, p);
+  if (cairo_pattern_status(cp) == CAIRO_STATUS_SUCCESS) {
+    cairo_set_source(cr, cp);
+  } else {
+    // Substitute in a 50% transparent grayish purple so that "something is
+    // wrong with the Cairo pattern" is hopefully visible without abandoning
+    // the graphic entirely.
+    cairo_set_source_rgba(cr, 0.75, 0.25, 0.75, 0.5);
+  }
+
   cairo_fill(cr);
+  cairo_pattern_destroy(cp);
   return NULL;
 }
 
@@ -1063,17 +1305,41 @@ iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
 static const char*  //
 iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
+  static const char* spread_names[4] = {"none", "pad", "reflect", "repeat"};
+
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
   if (f) {
-    if (iconvg_paint__is_flat_color(p)) {
-      iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
-      fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
-              ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
-              ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
-    } else {
-      // TODO: a more informative printf message.
-      fprintf(f, "%send_drawing(gradient{...})\n",
-              ((const char*)(c->context_const_ptr)));
+    switch (iconvg_paint__type(p)) {
+      case ICONVG_PAINT_TYPE__FLAT_COLOR: {
+        iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
+        fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
+                ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+                ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
+        fprintf(f,
+                "%send_drawing(linear_gradient{nstops=%d, spread=%s, ...})\n",
+                ((const char*)(c->context_const_ptr)),
+                ((int)(iconvg_paint__gradient_number_of_stops(p))),
+                spread_names[iconvg_paint__gradient_spread(p)]);
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
+        fprintf(f,
+                "%send_drawing(radial_gradient{nstops=%d, spread=%s, ...})\n",
+                ((const char*)(c->context_const_ptr)),
+                ((int)(iconvg_paint__gradient_number_of_stops(p))),
+                spread_names[iconvg_paint__gradient_spread(p)]);
+        break;
+      }
+
+      case ICONVG_PAINT_TYPE__INVALID:
+      default: {
+        return iconvg_error_invalid_paint_type;
+      }
     }
   }
   iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
@@ -1580,9 +1846,9 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
   float y3 = +0.0f;
   uint32_t flags = 0;
 
-  double scale_x = +0.0;
-  double scale_y = +0.0;
+  double scale_x = +1.0;
   double bias_x = +0.0;
+  double scale_y = +1.0;
   double bias_y = +0.0;
   {
     double rw = iconvg_rectangle_f32__width_f64(&r);
@@ -1596,6 +1862,14 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
       bias_y = r.min_y - (state->viewbox.min_y * scale_y);
     }
   }
+  state->s2d_scale_x = scale_x;
+  state->s2d_bias_x = bias_x;
+  state->s2d_scale_y = scale_y;
+  state->s2d_bias_y = bias_y;
+  state->d2s_scale_x = 1.0 / scale_x;
+  state->d2s_bias_x = -bias_x * state->d2s_scale_x;
+  state->d2s_scale_y = 1.0 / scale_y;
+  state->d2s_bias_y = -bias_y * state->d2s_scale_y;
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
@@ -1723,6 +1997,11 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xC7) {  // Switch to the drawing mode.
+      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
+             sizeof(state->paint_rgba));
+      if (iconvg_paint__type(state) == ICONVG_PAINT_TYPE__INVALID) {
+        return iconvg_error_invalid_paint_type;
+      }
       if (!iconvg_private_decoder__decode_coordinate_number(d, &curr_x) ||
           !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
         return iconvg_error_bad_coordinate;
@@ -1734,8 +2013,6 @@ styling_mode:
                                    (curr_y * scale_y) + bias_y));
       x1 = curr_x;
       y1 = curr_y;
-      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
-             sizeof(state->paint_rgba));
       // TODO: if H is outside the LOD range then skip the drawing.
       goto drawing_mode;
 
@@ -2266,6 +2543,15 @@ iconvg_private_decode(iconvg_canvas* c,
 
   memcpy(&state.creg, &state.custom_palette, sizeof(state.creg));
   memset(&state.nreg[0], 0, sizeof(state.nreg));
+  state.s2d_scale_x = +1.0;
+  state.s2d_bias_x = +0.0;
+  state.s2d_scale_y = +1.0;
+  state.s2d_bias_y = +0.0;
+  state.d2s_scale_x = +1.0;
+  state.d2s_bias_x = +0.0;
+  state.d2s_scale_y = +1.0;
+  state.d2s_bias_y = +0.0;
+
   return iconvg_private_execute_bytecode(c, r, d, &state);
 }
 
@@ -2332,6 +2618,8 @@ const char iconvg_error_invalid_backend_not_enabled[] =  //
     "iconvg: invalid backend (not enabled)";
 const char iconvg_error_invalid_constructor_argument[] =  //
     "iconvg: invalid constructor argument";
+const char iconvg_error_invalid_paint_type[] =  //
+    "iconvg: invalid paint type";
 const char iconvg_error_null_vtable[] =  //
     "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //
@@ -2359,43 +2647,158 @@ iconvg_error_is_file_format_error(const char* err_msg) {
 
 // -------------------------------- #include "./paint.c"
 
-bool  //
-iconvg_paint__is_flat_color(const iconvg_paint* self) {
-  if (!self) {
-    return true;
+iconvg_paint_type  //
+iconvg_paint__type(const iconvg_paint* self) {
+  if (self) {
+    const uint8_t* rgba = &self->paint_rgba[0];
+    if ((rgba[0] <= rgba[3]) &&  //
+        (rgba[1] <= rgba[3]) &&  //
+        (rgba[2] <= rgba[3])) {
+      return ICONVG_PAINT_TYPE__FLAT_COLOR;
+    } else if ((rgba[3] == 0x00) && (rgba[2] >= 0x80)) {
+      return (rgba[2] & 0x40) ? ICONVG_PAINT_TYPE__RADIAL_GRADIENT
+                              : ICONVG_PAINT_TYPE__LINEAR_GRADIENT;
+    }
   }
-  const uint8_t* rgba = &self->paint_rgba[0];
-  return (rgba[0] <= rgba[3]) &&  //
-         (rgba[1] <= rgba[3]) &&  //
-         (rgba[2] <= rgba[3]);
+  return ICONVG_PAINT_TYPE__INVALID;
 }
 
-iconvg_nonpremul_color  //
-iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self) {
+// ----
+
+static inline iconvg_nonpremul_color  //
+iconvg_private_flat_color_as_nonpremul_color(const uint8_t* rgba) {
   iconvg_nonpremul_color k;
-  if (!self || (self->paint_rgba[3] == 0x00)) {
+  if (!rgba || (rgba[3] == 0x00)) {
     memset(&k.rgba[0], 0, 4);
-  } else if (self->paint_rgba[3] == 0xFF) {
-    memcpy(&k.rgba[0], &self->paint_rgba[0], 4);
+  } else if (rgba[3] == 0xFF) {
+    memcpy(&k.rgba[0], rgba, 4);
   } else {
-    uint32_t a = self->paint_rgba[3];
-    k.rgba[0] = ((uint8_t)(((uint32_t)(self->paint_rgba[0])) * 0xFF / a));
-    k.rgba[1] = ((uint8_t)(((uint32_t)(self->paint_rgba[1])) * 0xFF / a));
-    k.rgba[2] = ((uint8_t)(((uint32_t)(self->paint_rgba[2])) * 0xFF / a));
+    uint32_t a = rgba[3];
+    k.rgba[0] = ((uint8_t)(((uint32_t)(rgba[0])) * 0xFF / a));
+    k.rgba[1] = ((uint8_t)(((uint32_t)(rgba[1])) * 0xFF / a));
+    k.rgba[2] = ((uint8_t)(((uint32_t)(rgba[2])) * 0xFF / a));
     k.rgba[3] = ((uint8_t)a);
   }
   return k;
 }
 
-iconvg_premul_color  //
-iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self) {
+static inline iconvg_premul_color  //
+iconvg_private_flat_color_as_premul_color(const uint8_t* rgba) {
   iconvg_premul_color k;
-  if (!self) {
+  if (!rgba) {
     memset(&k.rgba[0], 0, 4);
   } else {
-    memcpy(&k.rgba[0], &self->paint_rgba[0], 4);
+    memcpy(&k.rgba[0], rgba, 4);
   }
   return k;
+}
+
+// ----
+
+iconvg_nonpremul_color  //
+iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self) {
+  return iconvg_private_flat_color_as_nonpremul_color(
+      self ? &self->paint_rgba[0] : NULL);
+}
+
+iconvg_premul_color  //
+iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self) {
+  return iconvg_private_flat_color_as_premul_color(self ? &self->paint_rgba[0]
+                                                        : NULL);
+}
+
+// ----
+
+iconvg_gradient_spread  //
+iconvg_paint__gradient_spread(const iconvg_paint* self) {
+  if (!self) {
+    return ICONVG_GRADIENT_SPREAD__NONE;
+  }
+  return (iconvg_gradient_spread)(self->paint_rgba[1] >> 6);
+}
+
+uint32_t  //
+iconvg_paint__gradient_number_of_stops(const iconvg_paint* self) {
+  if (!self) {
+    return 0;
+  }
+  return 0x3F & self->paint_rgba[0];
+}
+
+iconvg_nonpremul_color  //
+iconvg_paint__gradient_stop_color_as_nonpremul_color(const iconvg_paint* self,
+                                                     uint32_t which_stop) {
+  const uint8_t* rgba = NULL;
+  if (self) {
+    uint32_t cbase = self->paint_rgba[1];
+    rgba = &self->creg.colors[0x3F & (cbase + which_stop)].rgba[0];
+  }
+  return iconvg_private_flat_color_as_nonpremul_color(rgba);
+}
+
+iconvg_premul_color  //
+iconvg_paint__gradient_stop_color_as_premul_color(const iconvg_paint* self,
+                                                  uint32_t which_stop) {
+  const uint8_t* rgba = NULL;
+  if (self) {
+    uint32_t cbase = self->paint_rgba[1];
+    rgba = &self->creg.colors[0x3F & (cbase + which_stop)].rgba[0];
+  }
+  return iconvg_private_flat_color_as_premul_color(rgba);
+}
+
+float  //
+iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
+                                   uint32_t which_stop) {
+  if (!self) {
+    return 0;
+  }
+  uint32_t nbase = self->paint_rgba[2];
+  return self->nreg[0x3F & (nbase + which_stop)];
+}
+
+iconvg_matrix_2x3_f64  //
+iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
+  if (!self) {
+    return iconvg_make_matrix_2x3_f64(1, 0, 0, 0, 1, 0);
+  }
+
+  uint32_t nbase = self->paint_rgba[2];
+  double s00 = self->nreg[0x3F & (nbase - 6)];
+  double s01 = self->nreg[0x3F & (nbase - 5)];
+  double s02 = self->nreg[0x3F & (nbase - 4)];
+  double s10 = self->nreg[0x3F & (nbase - 3)];
+  double s11 = self->nreg[0x3F & (nbase - 2)];
+  double s12 = self->nreg[0x3F & (nbase - 1)];
+
+  // The [s00, s01, s02; s10, s11, s12] matrix transforms from *src*
+  // coordinates to pattern coordinates.
+  //
+  //   pat_x = (src_x * s00) + (src_y * s01) + s02
+  //   pat_y = (src_x * s10) + (src_y * s11) + s12
+  //
+  // Pattern coordinate space (also known as paint or gradient coordinate
+  // space) is where linear gradients always range from x=0 to x=1 and radial
+  // gradients are always centre=(0,0) and radius=1. We can't just return this
+  // matrix to the caller. We need to produce the equivalent [d00, d01, d02;
+  // d10, d11, d12] matrix that transforms from *dst* coordinates to pattern
+  // coordinates. Recall that:
+  //
+  //   src_x = (dst_x * d2s_scale_x) + d2s_bias_x
+  //   src_y = (dst_y * d2s_scale_y) + d2s_bias_y
+  //
+  // Combining the above, we can solve for d00, d01, etc such that:
+  //
+  //   pat_x = (dst_x * d00) + (dst_y * d01) + d02
+  //   pat_y = (dst_x * d10) + (dst_y * d11) + d12
+  double d00 = s00 * self->d2s_scale_x;
+  double d01 = s01 * self->d2s_scale_y;
+  double d02 = (s00 * self->d2s_bias_x) + (s01 * self->d2s_bias_y) + s02;
+  double d10 = s10 * self->d2s_scale_x;
+  double d11 = s11 * self->d2s_scale_y;
+  double d12 = (s10 * self->d2s_bias_x) + (s11 * self->d2s_bias_y) + s12;
+
+  return iconvg_make_matrix_2x3_f64(d00, d01, d02, d10, d11, d12);
 }
 
 // -------------------------------- #include "./rectangle.c"
