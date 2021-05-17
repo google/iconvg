@@ -16,7 +16,7 @@
 
 // iconvg-to-png converts from IconVG to PNG (written to stdout).
 //
-// usage: %s input.ivg > output.png
+// Usage: iconvg-to-png input.ivg > output.png
 //     If input.ivg is omitted, it reads from stdin.
 
 #include <errno.h>
@@ -262,7 +262,7 @@ main(int argc, char** argv) {
         break;
       default:
         fprintf(stderr,
-                "usage: %s input.ivg > output.png\n"
+                "Usage: %s input.ivg > output.png\n"
                 "    If input.ivg is omitted, it reads from stdin.\n",
                 argv[0]);
         return 1;
