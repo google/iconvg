@@ -60,13 +60,20 @@ This allows the format to provide a simpler version for small rasterizations
 
 IconVG graphics work in 32 bit alpha-premultiplied color, with 8 bits for red,
 green, blue and alpha. Alpha-premultiplication means that `00:C0:00:C0`
-represents a 75%-opaque, fully saturated green.
+represents a 75%-opaque, 100% Saturation, 100% Value green (with 120° Hue).
 
-It also means that some RGBA combinations (where e.g. the red value is greater
-than the alpha value) are nonsensical. The virtual machine re-purposes some of
-those values to represent *gradients* instead of flat colors. Any color
-register whose alpha value is `0` but whose blue value is at least `128` is a
-gradient. Its remaining bits are reinterpreted such that:
+Interpolation between explicit gradient stops also uses alpha-premultiplied
+color, unlike SVG. The halfway color between opaque bright red = RGBA(1, 0, 0,
+1) and transparent black = RGBA(0, 0, 0, 0), which is RGBA(½, 0, 0, ½), is a
+50% opaque bright red, not a 50% opaque dark red. The halfway point still has
+100% Saturation and 100% Value (in the HSV Hue Saturation Value sense). It just
+has smaller alpha.
+
+Alpha-premultiplication also means that some RGBA combinations (where e.g. the
+red value is greater than the alpha value) are nonsensical. The virtual machine
+re-purposes some of those values to represent *gradients* instead of flat
+colors. Any color register whose alpha value is `0` but whose blue value is at
+least `128` is a gradient. Its remaining bits are reinterpreted such that:
 
 - The low 6 bits of the red value is the number of color/offset stops,
   `NSTOPS`.

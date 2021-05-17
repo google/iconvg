@@ -338,6 +338,24 @@ main(int argc, char** argv) {
     }
   }
 
+  // Convert from premultiplied alpha to non-premultiplied alpha.
+  // CAIRO_FORMAT_ARGB32 uses the former. libpng uses the latter.
+  {
+    for (uint32_t y = 0; y < pb.height; y++) {
+      const size_t bytes_per_pixel = 4;
+      uint8_t* row = pb.data + (y * bytes_per_pixel * pb.width);
+      for (uint32_t x = 0; x < pb.width; x++) {
+        uint8_t* rgba = row + (x * bytes_per_pixel);
+        if ((rgba[3] != 0x00) && (rgba[3] != 0xFF)) {
+          uint32_t a = rgba[3];
+          rgba[0] = (uint8_t)((rgba[0] * ((uint32_t)0xFF)) / a);
+          rgba[1] = (uint8_t)((rgba[1] * ((uint32_t)0xFF)) / a);
+          rgba[2] = (uint8_t)((rgba[2] * ((uint32_t)0xFF)) / a);
+        }
+      }
+    }
+  }
+
   // Write the PNG to stdout.
   {
     const char* err_msg = write_png_to_stdout(&pb);

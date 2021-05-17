@@ -818,17 +818,103 @@ iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
   return c;
 }
 
+// iconvg_private_cairo_set_gradient_stops sets the Cairo gradient stop colors
+// given the IconVG gradient stop colors.
+//
+// Unlike SVG, IconVG works solely with premultiplied alpha. In contrast,
+// https://lists.freedesktop.org/archives/cairo/2006-June/007203.html says that
+// Cairo accepts "both pre- and non-premultiplied colors in different parts of
+// the API". Specifically, while CAIRO_FORMAT_ARGB32 is premultiplied, both
+// cairo_set_source_rgba and cairo_pattern_add_color_stop_rgba are
+// non-premultiplied.
+//
+// For flat colors, we can simply convert IconVG colors to non-premultiplied
+// colors. Gradients are trickier (and hence this function is non-trivial)
+// because IconVG interpolation should also happen in premultiplied alpha space
+// (but Cairo interpolates in non-premultiplied alpha space). The mathematical
+// halfway color between opaque bright red = RGBA(1, 0, 0, 1) and transparent
+// black = RGBA(0, 0, 0, 0) is RGBA(½, 0, 0, ½). IconVG (premultiplied alpha)
+// semantics are that this is a 50% opaque bright red, not a 50% opaque dark
+// red. The halfway point still has 100% Saturation and 100% Value (in the HSV
+// Hue Saturation Value sense). It just has smaller alpha.
+//
+// Some more discussion is at
+// https://lists.freedesktop.org/archives/cairo/2021-May/029252.html
 static void  //
 iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
                                         const iconvg_paint* p) {
+  // foo0 and foo2 are the previous and current gradient stop. Sometimes we
+  // need to synthesize additional stops in between them, whose variables are
+  // named foo1.
+  double offset0 = 0.0;
+  double r0 = 0.0;
+  double g0 = 0.0;
+  double b0 = 0.0;
+  double a0 = 0.0;
+
   uint32_t n = iconvg_paint__gradient_number_of_stops(p);
   for (uint32_t i = 0; i < n; i++) {
-    float offset = iconvg_paint__gradient_stop_offset(p, i);
-    iconvg_nonpremul_color k =
-        iconvg_paint__gradient_stop_color_as_nonpremul_color(p, i);
-    cairo_pattern_add_color_stop_rgba(cp, offset, k.rgba[0] / 255.0,
-                                      k.rgba[1] / 255.0, k.rgba[2] / 255.0,
-                                      k.rgba[3] / 255.0);
+    // Calculate offset and color for the current stop.
+    double offset2 = iconvg_paint__gradient_stop_offset(p, i);
+    iconvg_premul_color k =
+        iconvg_paint__gradient_stop_color_as_premul_color(p, i);
+    double r2 = k.rgba[0] / 255.0;
+    double g2 = k.rgba[1] / 255.0;
+    double b2 = k.rgba[2] / 255.0;
+    double a2 = k.rgba[3] / 255.0;
+
+    if ((i == 0) ||                      //
+        ((a0 == 1.0) && (a2 == 1.0)) ||  //
+        ((a0 == 0.0) && (a2 == 0.0))) {
+      // If it's the first stop, or if we're interpolating from 100% to 100%
+      // opaque or from 0% to 0% opaque, we don't have to worry about
+      // premultiplied versus non-premultiplied alpha.
+      cairo_pattern_add_color_stop_rgba(cp, offset2, r2, g2, b2, a2);
+
+    } else if (a0 == 0.0) {
+      // If we're blending e.g. from transparent black to (partially) opaque
+      // blue, insert "transparent blue" immediately after the previous
+      // "transparent black".
+      cairo_pattern_add_color_stop_rgba(cp, offset0, r2, g2, b2, 0.0);
+      cairo_pattern_add_color_stop_rgba(cp, offset2, r2, g2, b2, a2);
+
+    } else if (a2 == 0.0) {
+      // If we're blending e.g. from (partially) opaque blue to transparent
+      // black, insert "transparent blue" immediately before the current
+      // "transparent black".
+      cairo_pattern_add_color_stop_rgba(cp, offset2, r0, g0, b0, 0.0);
+      cairo_pattern_add_color_stop_rgba(cp, offset2, r2, g2, b2, a2);
+
+    } else {
+      // Otherwise, fake "interpolate with premultiplied alpha" by synthesizing
+      // n Cairo stops for this 1 IconVG stop. The n stops' colors are
+      // calculated explicitly here, in premultiplied alpha space. We then let
+      // Cairo do its thing in non-premultiplied alpha space. The difference
+      // between n stops (interpolating non-premultiplied) and 1 stop
+      // (interpolating premultiplied) will hopefully be imperceivable.
+      const int32_t n = 16;
+      for (int32_t i = (n - 1); i >= 0; i--) {
+        int32_t j = n - i;
+        double offset1 = ((i * offset0) + (j * offset2)) / n;
+        double r1 = ((i * r0) + (j * r2)) / n;
+        double g1 = ((i * g0) + (j * g2)) / n;
+        double b1 = ((i * b0) + (j * b2)) / n;
+        double a1 = ((i * a0) + (j * a2)) / n;
+        if (a1 == 0.0) {
+          cairo_pattern_add_color_stop_rgba(cp, offset1, 0, 0, 0, 0);
+        } else {
+          cairo_pattern_add_color_stop_rgba(cp, offset1,  //
+                                            r1 / a1, g1 / a1, b1 / a1, a1);
+        }
+      }
+    }
+
+    // Update offset and color for the previous stop.
+    offset0 = offset2;
+    r0 = r2;
+    g0 = g2;
+    b0 = b2;
+    a0 = a2;
   }
 }
 
