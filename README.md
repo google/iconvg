@@ -1,6 +1,6 @@
 # IconVG
 
-IconVG is a compact, binary format for simple vector graphics: icons, logos,
+IconVG is a compact, binary format for simple vector graphics, icons, logos,
 glyphs and emoji.
 
 **WARNING: THIS FORMAT IS EXPERIMENTAL AND SUBJECT TO INCOMPATIBLE CHANGES.**
