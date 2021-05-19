@@ -1820,10 +1820,10 @@ iconvg_private_decoder__decode_zero_to_one_number(iconvg_private_decoder* self,
 
 static bool  //
 iconvg_private_decoder__decode_magic_identifier(iconvg_private_decoder* self) {
-  if ((self->len < 4) &&         //
-      (self->ptr[0] != 0x89) &&  //
-      (self->ptr[1] != 0x49) &&  //
-      (self->ptr[2] != 0x56) &&  //
+  if ((self->len < 4) ||         //
+      (self->ptr[0] != 0x89) ||  //
+      (self->ptr[1] != 0x49) ||  //
+      (self->ptr[2] != 0x56) ||  //
       (self->ptr[3] != 0x47)) {
     return false;
   }
