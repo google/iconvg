@@ -15,6 +15,9 @@
 
 # ----------------
 
+# On a Debian or Ubuntu system, you might first need to run:
+#   sudo apt install libcairo2-dev libpng-dev libxcb1-dev libxcb-image0-dev
+
 if [ ! -e iconvg-root-directory.txt ]; then
   echo "$0 should be run from the IconVG root directory."
   exit 1
@@ -29,3 +32,11 @@ ${CC:-gcc} -O3 -Wall -std=c99 \
     -o gen/bin/iconvg-to-png-with-cairo
 
 echo "Built gen/bin/iconvg-to-png-with-cairo"
+
+${CC:-gcc} -O3 -Wall -std=c99 \
+    -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
+    example/iconvg-viewer/iconvg-viewer.c \
+    -lcairo -lxcb -lxcb-image \
+    -o gen/bin/iconvg-viewer-with-cairo
+
+echo "Built gen/bin/iconvg-viewer-with-cairo"

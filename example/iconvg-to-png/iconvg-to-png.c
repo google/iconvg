@@ -287,8 +287,8 @@ main(int argc, char** argv) {
   }
 
   // Check that the graphic isn't too large. An 0x7FFF = 32767 pixel width or
-  // height upper bound is somewhat arbitrary, but it simplifies any overflow
-  // concerns about (pixel_width * pixel_height * bytes_per_pixel).
+  // height upper bound is somewhat arbitrary, but it simplifies any uint32_t
+  // overflow concerns about (pixel_width * pixel_height * bytes_per_pixel).
   if ((pixel_width > 0x7FFF) || (pixel_height > 0x7FFF)) {
     fprintf(stderr, "main: graphic is too large");
     return 1;
