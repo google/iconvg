@@ -1886,7 +1886,13 @@ iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
   return iconvg_private_decoder__decode_coordinate_number(self, &dst->min_x) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->min_y) &&
          iconvg_private_decoder__decode_coordinate_number(self, &dst->max_x) &&
-         iconvg_private_decoder__decode_coordinate_number(self, &dst->max_y);
+         iconvg_private_decoder__decode_coordinate_number(self, &dst->max_y) &&
+         (-INFINITY < dst->min_x) &&    //
+         (dst->min_x <= dst->max_x) &&  //
+         (dst->max_x < +INFINITY) &&    //
+         (-INFINITY < dst->min_y) &&    //
+         (dst->min_y <= dst->max_y) &&  //
+         (dst->max_y < +INFINITY);
 }
 
 static bool  //
