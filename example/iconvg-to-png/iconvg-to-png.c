@@ -116,19 +116,18 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
     return "main: NULL pixel_buffer";
   }
   *pb = ((pixel_buffer){0});
+  pb->canvas = iconvg_make_broken_canvas("main: no IconVG backend configured");
   return NULL;
 }
 
 const char*  //
 flush_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
-  // flush_pixel_buffer will always fail. Still, this program might be useful
-  // if it prints debug output prior to failure.
   return "main: no IconVG backend configured";
 }
 
 const char*  //
 finalize_pixel_buffer(pixel_buffer* pb) {
-  return NULL;
+  return "main: no IconVG backend configured";
 }
 
 #endif  //  ICONVG_CONFIG__ETC
@@ -315,7 +314,8 @@ main(int argc, char** argv) {
   {
     iconvg_canvas* c = &pb.canvas;
     iconvg_canvas debug_canvas = iconvg_make_debug_canvas(
-        stderr, "debug: ", pb.canvas.vtable ? &pb.canvas : NULL);
+        stderr,
+        "debug: ", iconvg_canvas__is_valid(&pb.canvas) ? &pb.canvas : NULL);
     if (true) {  // TODO: parse a -debug command line arg.
       c = &debug_canvas;
     }

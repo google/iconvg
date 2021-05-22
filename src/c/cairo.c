@@ -182,6 +182,11 @@ iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
   }
 }
 
+static bool  //
+iconvg_private_cairo_canvas__is_valid(const struct iconvg_canvas_struct* c) {
+  return true;
+}
+
 static const char*  //
 iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
                                           iconvg_rectangle_f32 dst_rect) {
@@ -361,6 +366,7 @@ iconvg_private_cairo_canvas__on_metadata_suggested_palette(
 static const iconvg_canvas_vtable  //
     iconvg_private_cairo_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
+        &iconvg_private_cairo_canvas__is_valid,
         &iconvg_private_cairo_canvas__begin_decode,
         &iconvg_private_cairo_canvas__end_decode,
         &iconvg_private_cairo_canvas__begin_drawing,

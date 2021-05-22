@@ -244,6 +244,7 @@ struct iconvg_canvas_struct;
 
 typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
+  bool (*is_valid)(const struct iconvg_canvas_struct* c);
   const char* (*begin_decode)(struct iconvg_canvas_struct* c,
                               iconvg_rectangle_f32 dst_rect);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
@@ -337,6 +338,20 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
+
+// iconvg_canvas__is_valid returns whether self is valid. A NULL or broken
+// canvas is not valid. Broken means the result of iconvg_make_broken_canvas.
+//
+// Note that invalid canvases are still usable. You can pass them to functions
+// like iconvg_decode and iconvg_make_debug_canvas.
+//
+// A NULL canvas means that all canvas methods are no-op successes (returning a
+// NULL error message).
+//
+// A broken canvas means that all canvas methods are no-op failures (returning
+// the iconvg_make_broken_canvas err_msg argument).
+bool  //
+iconvg_canvas__is_valid(const iconvg_canvas* self);
 
 // ----
 
@@ -630,6 +645,11 @@ struct iconvg_paint_struct {
 
 // -------------------------------- #include "./broken.c"
 
+static bool  //
+iconvg_private_broken_canvas__is_valid(const struct iconvg_canvas_struct* c) {
+  return false;
+}
+
 static const char*  //
 iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c,
                                            iconvg_rectangle_f32 dst_rect) {
@@ -721,6 +741,7 @@ iconvg_private_broken_canvas__on_metadata_suggested_palette(
 static const iconvg_canvas_vtable  //
     iconvg_private_broken_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
+        &iconvg_private_broken_canvas__is_valid,
         &iconvg_private_broken_canvas__begin_decode,
         &iconvg_private_broken_canvas__end_decode,
         &iconvg_private_broken_canvas__begin_drawing,
@@ -744,6 +765,11 @@ iconvg_make_broken_canvas(const char* err_msg) {
   c.context_const_ptr = err_msg;
   c.context_extra = 0;
   return c;
+}
+
+bool  //
+iconvg_canvas__is_valid(const iconvg_canvas* self) {
+  return self && self->vtable && (*self->vtable->is_valid)(self);
 }
 
 // -------------------------------- #include "./cairo.c"
@@ -916,6 +942,11 @@ iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
     b0 = b2;
     a0 = a2;
   }
+}
+
+static bool  //
+iconvg_private_cairo_canvas__is_valid(const struct iconvg_canvas_struct* c) {
+  return true;
 }
 
 static const char*  //
@@ -1097,6 +1128,7 @@ iconvg_private_cairo_canvas__on_metadata_suggested_palette(
 static const iconvg_canvas_vtable  //
     iconvg_private_cairo_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
+        &iconvg_private_cairo_canvas__is_valid,
         &iconvg_private_cairo_canvas__begin_decode,
         &iconvg_private_cairo_canvas__end_decode,
         &iconvg_private_cairo_canvas__begin_drawing,
@@ -1328,6 +1360,12 @@ const iconvg_palette iconvg_private_default_palette = {{
 }};
 
 // -------------------------------- #include "./debug.c"
+
+static bool  //
+iconvg_private_debug_canvas__is_valid(const struct iconvg_canvas_struct* c) {
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  return !wrapped || (*wrapped->vtable->is_valid)(wrapped);
+}
 
 static const char*  //
 iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c,
@@ -1622,6 +1660,7 @@ iconvg_private_debug_canvas__on_metadata_suggested_palette(
 static const iconvg_canvas_vtable  //
     iconvg_private_debug_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
+        &iconvg_private_debug_canvas__is_valid,
         &iconvg_private_debug_canvas__begin_decode,
         &iconvg_private_debug_canvas__end_decode,
         &iconvg_private_debug_canvas__begin_drawing,

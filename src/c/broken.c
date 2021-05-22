@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+static bool  //
+iconvg_private_broken_canvas__is_valid(const struct iconvg_canvas_struct* c) {
+  return false;
+}
+
 static const char*  //
 iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c,
                                            iconvg_rectangle_f32 dst_rect) {
@@ -103,6 +108,7 @@ iconvg_private_broken_canvas__on_metadata_suggested_palette(
 static const iconvg_canvas_vtable  //
     iconvg_private_broken_canvas_vtable = {
         sizeof(iconvg_canvas_vtable),
+        &iconvg_private_broken_canvas__is_valid,
         &iconvg_private_broken_canvas__begin_decode,
         &iconvg_private_broken_canvas__end_decode,
         &iconvg_private_broken_canvas__begin_drawing,
@@ -126,4 +132,9 @@ iconvg_make_broken_canvas(const char* err_msg) {
   c.context_const_ptr = err_msg;
   c.context_extra = 0;
   return c;
+}
+
+bool  //
+iconvg_canvas__is_valid(const iconvg_canvas* self) {
+  return self && self->vtable && (*self->vtable->is_valid)(self);
 }

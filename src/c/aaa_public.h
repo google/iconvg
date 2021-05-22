@@ -198,6 +198,7 @@ struct iconvg_canvas_struct;
 
 typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
+  bool (*is_valid)(const struct iconvg_canvas_struct* c);
   const char* (*begin_decode)(struct iconvg_canvas_struct* c,
                               iconvg_rectangle_f32 dst_rect);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
@@ -291,6 +292,20 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
+
+// iconvg_canvas__is_valid returns whether self is valid. A NULL or broken
+// canvas is not valid. Broken means the result of iconvg_make_broken_canvas.
+//
+// Note that invalid canvases are still usable. You can pass them to functions
+// like iconvg_decode and iconvg_make_debug_canvas.
+//
+// A NULL canvas means that all canvas methods are no-op successes (returning a
+// NULL error message).
+//
+// A broken canvas means that all canvas methods are no-op failures (returning
+// the iconvg_make_broken_canvas err_msg argument).
+bool  //
+iconvg_canvas__is_valid(const iconvg_canvas* self);
 
 // ----
 
