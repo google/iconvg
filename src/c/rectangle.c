@@ -17,6 +17,18 @@
 // Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
 // the same as !(min >= max).
 
+bool  //
+iconvg_rectangle_f32__is_finite_and_not_empty(
+    const iconvg_rectangle_f32* self) {
+  return self &&                         //
+         (-INFINITY < self->min_x) &&    //
+         (self->min_x < self->max_x) &&  //
+         (self->max_x < +INFINITY) &&    //
+         (-INFINITY < self->min_y) &&    //
+         (self->min_y < self->max_y) &&  //
+         (self->max_y < +INFINITY);
+}
+
 double  //
 iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self) {
   if (self && (self->max_x > self->min_x)) {

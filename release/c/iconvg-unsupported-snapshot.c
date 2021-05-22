@@ -485,6 +485,11 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self);
 
 // ----
 
+// iconvg_rectangle_f32__is_finite_and_not_empty returns whether self is finite
+// (none of its fields are infinite) and non-empty.
+bool  //
+iconvg_rectangle_f32__is_finite_and_not_empty(const iconvg_rectangle_f32* self);
+
 // iconvg_rectangle_f32__width_f64 returns self's width as an f64.
 double  //
 iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self);
@@ -2932,6 +2937,18 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
 
 // Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
 // the same as !(min >= max).
+
+bool  //
+iconvg_rectangle_f32__is_finite_and_not_empty(
+    const iconvg_rectangle_f32* self) {
+  return self &&                         //
+         (-INFINITY < self->min_x) &&    //
+         (self->min_x < self->max_x) &&  //
+         (self->max_x < +INFINITY) &&    //
+         (-INFINITY < self->min_y) &&    //
+         (self->min_y < self->max_y) &&  //
+         (self->max_y < +INFINITY);
+}
 
 double  //
 iconvg_rectangle_f32__width_f64(const iconvg_rectangle_f32* self) {
