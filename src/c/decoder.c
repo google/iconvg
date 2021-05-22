@@ -1009,14 +1009,12 @@ iconvg_decode(iconvg_canvas* dst_canvas,
               size_t src_len,
               const iconvg_decode_options* options) {
   iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
-  if (!dst_canvas) {
+  if (!dst_canvas || !dst_canvas->vtable) {
     dst_canvas = &fallback_canvas;
   }
 
-  if (!dst_canvas->vtable) {
-    return iconvg_error_null_vtable;
-  } else if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
-             sizeof(iconvg_canvas_vtable)) {
+  if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
+      sizeof(iconvg_canvas_vtable)) {
     // If we want to support multiple library versions (with dynamic linking),
     // we could detect older versions here (with smaller vtable sizes) and
     // substitute in an adapter implementation.

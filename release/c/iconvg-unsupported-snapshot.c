@@ -89,7 +89,6 @@ extern const char iconvg_error_bad_styling_opcode[];
 extern const char iconvg_error_invalid_backend_not_enabled[];
 extern const char iconvg_error_invalid_constructor_argument[];
 extern const char iconvg_error_invalid_paint_type[];
-extern const char iconvg_error_null_vtable[];
 extern const char iconvg_error_unsupported_vtable[];
 
 // ----
@@ -339,14 +338,16 @@ iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
 
-// iconvg_canvas__is_valid returns whether self is valid. A NULL or broken
-// canvas is not valid. Broken means the result of iconvg_make_broken_canvas.
+// iconvg_canvas__is_valid returns whether self is valid. A NULL, zero-valued
+// or broken canvas is not valid. Zero-valued means the result of
+// "iconvg_canvas c = {0}". Broken means the result of "iconvg_canvas c =
+// iconvg_make_broken_canvas(err_msg)".
 //
 // Note that invalid canvases are still usable. You can pass them to functions
 // like iconvg_decode and iconvg_make_debug_canvas.
 //
-// A NULL canvas means that all canvas methods are no-op successes (returning a
-// NULL error message).
+// A NULL or zero-valued canvas means that all canvas methods are no-op
+// successes (returning a NULL error message).
 //
 // A broken canvas means that all canvas methods are no-op failures (returning
 // the iconvg_make_broken_canvas err_msg argument).
@@ -1679,6 +1680,9 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped) {
+  if (wrapped && !wrapped->vtable) {
+    wrapped = NULL;
+  }
   iconvg_canvas c;
   c.vtable = &iconvg_private_debug_canvas_vtable;
   c.context_nonconst_ptr0 = wrapped;
@@ -2687,14 +2691,12 @@ iconvg_decode(iconvg_canvas* dst_canvas,
               size_t src_len,
               const iconvg_decode_options* options) {
   iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
-  if (!dst_canvas) {
+  if (!dst_canvas || !dst_canvas->vtable) {
     dst_canvas = &fallback_canvas;
   }
 
-  if (!dst_canvas->vtable) {
-    return iconvg_error_null_vtable;
-  } else if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
-             sizeof(iconvg_canvas_vtable)) {
+  if (dst_canvas->vtable->sizeof__iconvg_canvas_vtable !=
+      sizeof(iconvg_canvas_vtable)) {
     // If we want to support multiple library versions (with dynamic linking),
     // we could detect older versions here (with smaller vtable sizes) and
     // substitute in an adapter implementation.
@@ -2745,8 +2747,6 @@ const char iconvg_error_invalid_constructor_argument[] =  //
     "iconvg: invalid constructor argument";
 const char iconvg_error_invalid_paint_type[] =  //
     "iconvg: invalid paint type";
-const char iconvg_error_null_vtable[] =  //
-    "iconvg: null vtable";
 const char iconvg_error_unsupported_vtable[] =  //
     "iconvg: unsupported vtable";
 

@@ -330,6 +330,9 @@ iconvg_canvas  //
 iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped) {
+  if (wrapped && !wrapped->vtable) {
+    wrapped = NULL;
+  }
   iconvg_canvas c;
   c.vtable = &iconvg_private_debug_canvas_vtable;
   c.context_nonconst_ptr0 = wrapped;
