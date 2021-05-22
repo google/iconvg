@@ -125,6 +125,7 @@ iconvg_private_last_color_that_isnt_opaque_black(
 
 struct iconvg_paint_struct {
   iconvg_rectangle_f32 viewbox;
+  int64_t height_in_pixels;
   uint8_t paint_rgba[4];
   iconvg_palette custom_palette;
   iconvg_palette creg;

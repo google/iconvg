@@ -119,6 +119,30 @@ iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
 
 // ----
 
+// iconvg_optional_i64 is the C equivalent of C++'s std::optional<int64_t>.
+typedef struct iconvg_optional_i64_struct {
+  int64_t value;
+  bool has_value;
+} iconvg_optional_i64;
+
+iconvg_optional_i64  //
+iconvg_make_optional_i64_none() {
+  iconvg_optional_i64 o;
+  o.value = 0;
+  o.has_value = false;
+  return o;
+}
+
+iconvg_optional_i64  //
+iconvg_make_optional_i64_some(int64_t value) {
+  iconvg_optional_i64 o;
+  o.value = value;
+  o.has_value = true;
+  return o;
+}
+
+// ----
+
 #define ICONVG_RGBA_INDEX___RED 0
 #define ICONVG_RGBA_INDEX__BLUE 1
 #define ICONVG_RGBA_INDEX_GREEN 2
@@ -210,6 +234,13 @@ typedef struct iconvg_decode_options_struct {
   // library version, newer fields will be ignored. If the callee has a newer
   // library version, missing fields will assume the implicit default values.
   size_t sizeof__iconvg_decode_options;
+
+  // height_in_pixels, if it has_value, is the rasterization height in pixels,
+  // which can affect whether IconVG paths meet Level of Detail thresholds.
+  //
+  // If its has_value is false then the height (in pixels) is set to the height
+  // (in dst coordinate space units) of the dst_rect argument to iconvg_decode.
+  iconvg_optional_i64 height_in_pixels;
 
   // palette, if non-NULL, is the custom palette used for rendering. If NULL,
   // the IconVG file's suggested palette is used instead.
@@ -624,6 +655,7 @@ iconvg_private_last_color_that_isnt_opaque_black(
 
 struct iconvg_paint_struct {
   iconvg_rectangle_f32 viewbox;
+  int64_t height_in_pixels;
   uint8_t paint_rgba[4];
   iconvg_palette custom_palette;
   iconvg_palette creg;
@@ -1955,12 +1987,15 @@ iconvg_private_decoder__decode_metadata_suggested_palette(
 // ----
 
 static const char*  //
-iconvg_private_execute_bytecode(iconvg_canvas* c,
+iconvg_private_execute_bytecode(iconvg_canvas* c_arg,
                                 iconvg_rectangle_f32 r,
                                 iconvg_private_decoder* d,
                                 iconvg_paint* state) {
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
+
+  iconvg_canvas no_op_canvas = iconvg_make_broken_canvas(NULL);
+  iconvg_canvas* c = &no_op_canvas;
 
   // Drawing ops will typically set curr_x and curr_y. They also set x1 and y1
   // in case the subsequent op is smooth and needs an implicit point.
@@ -2001,7 +2036,9 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
 
   // sel[0] and sel[1] are the CSEL and NSEL registers.
   uint32_t sel[2] = {0};
-  float lod[2] = {0};
+  double lod[2];
+  lod[0] = 0.0;
+  lod[1] = INFINITY;
 
 styling_mode:
   while (true) {
@@ -2134,6 +2171,8 @@ styling_mode:
           !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
         return iconvg_error_bad_coordinate;
       }
+      double h = (double)state->height_in_pixels;
+      c = ((lod[0] <= h) && (h < lod[1])) ? c_arg : &no_op_canvas;
       ICONVG_PRIVATE_TRY((*c->vtable->begin_drawing)(c));
       ICONVG_PRIVATE_TRY(
           (*c->vtable->begin_path)(c,                            //
@@ -2141,14 +2180,17 @@ styling_mode:
                                    (curr_y * scale_y) + bias_y));
       x1 = curr_x;
       y1 = curr_y;
-      // TODO: if H is outside the LOD range then skip the drawing.
       goto drawing_mode;
 
     } else if (opcode < 0xC8) {  // Set Level of Detail bounds.
-      if (!iconvg_private_decoder__decode_real_number(d, &lod[0]) ||
-          !iconvg_private_decoder__decode_real_number(d, &lod[1])) {
+      float lod0;
+      float lod1;
+      if (!iconvg_private_decoder__decode_real_number(d, &lod0) ||
+          !iconvg_private_decoder__decode_real_number(d, &lod1)) {
         return iconvg_error_bad_number;
       }
+      lod[0] = (double)lod0;
+      lod[1] = (double)lod1;
       continue;
     }
 
@@ -2606,6 +2648,19 @@ iconvg_private_decode(iconvg_canvas* c,
                       const iconvg_decode_options* options) {
   iconvg_paint state;
   state.viewbox = iconvg_private_default_viewbox();
+  if (options && options->height_in_pixels.has_value) {
+    state.height_in_pixels = options->height_in_pixels.value;
+  } else {
+    double h = iconvg_rectangle_f32__height_f64(&r);
+    // The 0x10_0000 = (1 << 20) = 1048576 limit is arbitrary but it's less
+    // than MAX_INT32 and also ensures that conversion between integer and
+    // float or double is lossless.
+    if (h <= 0x100000) {
+      state.height_in_pixels = (int64_t)h;
+    } else {
+      state.height_in_pixels = 0x100000;
+    }
+  }
   memset(&state.paint_rgba, 0, sizeof(state.paint_rgba));
   memcpy(&state.custom_palette, &iconvg_private_default_palette,
          sizeof(state.custom_palette));

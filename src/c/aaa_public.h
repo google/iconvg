@@ -105,6 +105,30 @@ iconvg_make_rectangle_f32(float min_x, float min_y, float max_x, float max_y) {
 
 // ----
 
+// iconvg_optional_i64 is the C equivalent of C++'s std::optional<int64_t>.
+typedef struct iconvg_optional_i64_struct {
+  int64_t value;
+  bool has_value;
+} iconvg_optional_i64;
+
+iconvg_optional_i64  //
+iconvg_make_optional_i64_none() {
+  iconvg_optional_i64 o;
+  o.value = 0;
+  o.has_value = false;
+  return o;
+}
+
+iconvg_optional_i64  //
+iconvg_make_optional_i64_some(int64_t value) {
+  iconvg_optional_i64 o;
+  o.value = value;
+  o.has_value = true;
+  return o;
+}
+
+// ----
+
 #define ICONVG_RGBA_INDEX___RED 0
 #define ICONVG_RGBA_INDEX__BLUE 1
 #define ICONVG_RGBA_INDEX_GREEN 2
@@ -196,6 +220,13 @@ typedef struct iconvg_decode_options_struct {
   // library version, newer fields will be ignored. If the callee has a newer
   // library version, missing fields will assume the implicit default values.
   size_t sizeof__iconvg_decode_options;
+
+  // height_in_pixels, if it has_value, is the rasterization height in pixels,
+  // which can affect whether IconVG paths meet Level of Detail thresholds.
+  //
+  // If its has_value is false then the height (in pixels) is set to the height
+  // (in dst coordinate space units) of the dst_rect argument to iconvg_decode.
+  iconvg_optional_i64 height_in_pixels;
 
   // palette, if non-NULL, is the custom palette used for rendering. If NULL,
   // the IconVG file's suggested palette is used instead.
