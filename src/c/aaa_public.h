@@ -16,6 +16,38 @@
 #include <stdint.h>
 #include <string.h>
 
+// ---------------- Version
+
+// This section deals with library versions (also known as API versions), which
+// are different from file format versions (FFVs). For example, library
+// versions 3.0.1 and 4.2.0 could have incompatible API but still speak the
+// same file format.
+
+// ICONVG_LIBRARY_VERSION is major.minor.patch, as per https://semver.org/, as
+// a uint64_t. The major number is the high 32 bits. The minor number is the
+// middle 16 bits. The patch number is the low 16 bits. The pre-release label
+// and build metadata are part of the string representation (such as
+// "1.2.3-beta+456.20181231") but not the uint64_t representation.
+//
+// ICONVG_LIBRARY_VERSION_PRE_RELEASE_LABEL (such as "", "beta" or "rc.1")
+// being non-empty denotes a developer preview, not a release version, and has
+// no backwards or forwards compatibility guarantees.
+//
+// ICONVG_LIBRARY_VERSION_BUILD_METADATA_XXX, if non-zero, are the number of
+// commits and the last commit date in the repository used to build this
+// library. Within each major.minor branch, the commit count should increase
+// monotonically.
+//
+// Some code generation programs can override ICONVG_LIBRARY_VERSION.
+#define ICONVG_LIBRARY_VERSION 0
+#define ICONVG_LIBRARY_VERSION_MAJOR 0
+#define ICONVG_LIBRARY_VERSION_MINOR 0
+#define ICONVG_LIBRARY_VERSION_PATCH 0
+#define ICONVG_LIBRARY_VERSION_PRE_RELEASE_LABEL "unsupported.snapshot"
+#define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_COUNT 0
+#define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_DATE 0
+#define ICONVG_LIBRARY_VERSION_STRING "0.0.0+0.00000000"
+
 // ----
 
 // Functions that return a "const char*" typically use that to denote success

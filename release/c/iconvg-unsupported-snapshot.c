@@ -24,6 +24,12 @@
 // "foo.h"-like header, #define ICONVG_IMPLEMENTATION before #include'ing or
 // compiling it.
 
+// -------------------------------- #include "./aaa_public.h"
+
+#include <math.h>
+#include <stdint.h>
+#include <string.h>
+
 // ---------------- Version
 
 // This section deals with library versions (also known as API versions), which
@@ -55,12 +61,6 @@
 #define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_COUNT 0
 #define ICONVG_LIBRARY_VERSION_BUILD_METADATA_COMMIT_DATE 0
 #define ICONVG_LIBRARY_VERSION_STRING "0.0.0+0.00000000"
-
-// -------------------------------- #include "./aaa_public.h"
-
-#include <math.h>
-#include <stdint.h>
-#include <string.h>
 
 // ----
 
