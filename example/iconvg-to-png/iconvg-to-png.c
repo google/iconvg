@@ -315,7 +315,7 @@ main(int argc, char** argv) {
     iconvg_canvas* c = &pb.canvas;
     iconvg_canvas debug_canvas = iconvg_make_debug_canvas(
         stderr,
-        "debug: ", iconvg_canvas__is_valid(&pb.canvas) ? &pb.canvas : NULL);
+        "debug: ", iconvg_canvas__does_nothing(&pb.canvas) ? NULL : &pb.canvas);
     if (true) {  // TODO: parse a -debug command line arg.
       c = &debug_canvas;
     }

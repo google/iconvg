@@ -197,7 +197,6 @@ struct iconvg_canvas_struct;
 
 typedef struct iconvg_canvas_vtable_struct {
   size_t sizeof__iconvg_canvas_vtable;
-  bool (*is_valid)(const struct iconvg_canvas_struct* c);
   const char* (*begin_decode)(struct iconvg_canvas_struct* c,
                               iconvg_rectangle_f32 dst_rect);
   const char* (*end_decode)(struct iconvg_canvas_struct* c,
@@ -269,6 +268,12 @@ iconvg_error_is_file_format_error(const char* err_msg);
 
 // iconvg_make_broken_canvas returns an iconvg_canvas whose callbacks all do
 // nothing other than return err_msg.
+//
+// If err_msg is NULL then all canvas methods are no-op successes (returning a
+// NULL error message).
+//
+// If err_msg is non-NULL then all canvas methods are no-op failures (returning
+// the err_msg argument).
 iconvg_canvas  //
 iconvg_make_broken_canvas(const char* err_msg);
 
@@ -292,21 +297,22 @@ iconvg_make_debug_canvas(FILE* f,
                          const char* message_prefix,
                          iconvg_canvas* wrapped);
 
-// iconvg_canvas__is_valid returns whether self is valid. A NULL, zero-valued
-// or broken canvas is not valid. Zero-valued means the result of
-// "iconvg_canvas c = {0}". Broken means the result of "iconvg_canvas c =
-// iconvg_make_broken_canvas(err_msg)".
+// iconvg_canvas__does_nothing returns whether self is NULL or *self is
+// zero-valued or broken. Other canvas values are presumed to do something.
+// Zero-valued means the result of "iconvg_canvas c = {0}". Broken means the
+// result of "iconvg_canvas c = iconvg_make_broken_canvas(err_msg)".
 //
-// Note that invalid canvases are still usable. You can pass them to functions
-// like iconvg_decode and iconvg_make_debug_canvas.
+// Note that do-nothing canvases are still usable. You can pass them to
+// functions like iconvg_decode and iconvg_make_debug_canvas.
 //
 // A NULL or zero-valued canvas means that all canvas methods are no-op
 // successes (returning a NULL error message).
 //
-// A broken canvas means that all canvas methods are no-op failures (returning
-// the iconvg_make_broken_canvas err_msg argument).
+// A broken canvas means that all canvas methods are no-op successes or
+// failures (depending on the NULL-ness of the iconvg_make_broken_canvas
+// err_msg argument).
 bool  //
-iconvg_canvas__is_valid(const iconvg_canvas* self);
+iconvg_canvas__does_nothing(const iconvg_canvas* self);
 
 // ----
 

@@ -1014,7 +1014,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options) {
-  iconvg_canvas fallback_canvas = iconvg_make_debug_canvas(NULL, NULL, NULL);
+  iconvg_canvas fallback_canvas = iconvg_make_broken_canvas(NULL);
   if (!dst_canvas || !dst_canvas->vtable) {
     dst_canvas = &fallback_canvas;
   }
