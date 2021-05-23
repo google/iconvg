@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_private.h"
+
 static void  //
 iconvg_private_decoder__advance_to_ptr(iconvg_private_decoder* self,
                                        const uint8_t* new_ptr) {

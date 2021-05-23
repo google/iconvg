@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_private.h"
+
 iconvg_paint_type  //
 iconvg_paint__type(const iconvg_paint* self) {
   if (self) {

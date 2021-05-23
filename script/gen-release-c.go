@@ -97,12 +97,14 @@ func expand(w io.Writer, hashIncludeLine []byte) error {
 		return fmt.Errorf("main: unexpected line %q", hashIncludeLine)
 	}
 	filename := string(hashIncludeLine[len(hashInclude) : len(hashIncludeLine)-len(dquoteNL)])
-	fmt.Fprintf(w, "// -------------------------------- %s", hashIncludeLine)
+	fmt.Fprintf(w, "// -------------------------------- %s\n", hashIncludeLine)
 
 	src, err := os.ReadFile(filepath.FromSlash("src/c/" + filename))
 	if err != nil {
 		return err
 	}
+
+	// Skip the `// Copyright etc` lines.
 	if !bytes.HasPrefix(src, copyright) {
 		return fmt.Errorf("main: %q did not start with the expected copyright header", filename)
 	} else if i := bytes.Index(src, nlNL); i < 0 {
@@ -110,6 +112,20 @@ func expand(w io.Writer, hashIncludeLine []byte) error {
 	} else {
 		src = src[i+1:]
 	}
+
+	// Skip the `#include "./etc.h"` lines.
+	for len(src) > 0 {
+		if src[0] == '\n' {
+			src = src[1:]
+		} else if (src[0] != '#') || !bytes.HasPrefix(src, hashInclude) {
+			break
+		} else if i := bytes.IndexByte(src, '\n'); i < 0 {
+			return fmt.Errorf("main: %q had unsupported local #include", filename)
+		} else {
+			src = src[i+1:]
+		}
+	}
+
 	_, err = w.Write(src)
 	return err
 }

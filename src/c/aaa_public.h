@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 // ---------------- Version

@@ -27,7 +27,10 @@
 // -------------------------------- #include "./aaa_public.h"
 
 #include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 // ---------------- Version
@@ -2981,8 +2984,6 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
 }
 
 // -------------------------------- #include "./rectangle.c"
-
-// ----
 
 // Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
 // the same as !(min >= max).

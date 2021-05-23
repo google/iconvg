@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_private.h"
+
 const char iconvg_error_bad_color[] =  //
     "iconvg: bad color";
 const char iconvg_error_bad_coordinate[] =  //

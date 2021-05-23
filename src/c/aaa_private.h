@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_public.h"
+
 #define ICONVG_PRIVATE_TRY(err_msg)                   \
   do {                                                \
     const char* iconvg_private_try_err_msg = err_msg; \

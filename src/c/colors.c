@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_private.h"
+
 const uint8_t iconvg_private_one_byte_colors[512] = {
     0x00, 0x00, 0x00, 0xFF,  //
     0x00, 0x00, 0x40, 0xFF,  //

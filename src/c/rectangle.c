@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// ----
+#include "./aaa_private.h"
 
 // Note that iconvg_rectangle_f32 fields may be NaN, so that (min < max) is not
 // the same as !(min >= max).

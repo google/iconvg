@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./aaa_private.h"
+
 #if !defined(ICONVG_CONFIG__ENABLE_CAIRO_BACKEND)
 
 iconvg_canvas  //
