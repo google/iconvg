@@ -50,7 +50,7 @@ func main1() error {
 			line, remaining = line[:i+1], line[i+1:]
 		}
 
-		if !bytes.HasPrefix(line, hashInclude) {
+		if !bytes.HasPrefix(line, hashIncludeDQ) {
 			buf.Write(line)
 		} else if err := expand(buf, line); err != nil {
 			return err
@@ -65,10 +65,13 @@ func main1() error {
 }
 
 var (
-	copyright   = []byte(`// Copyright `)
-	dquoteNL    = []byte("\"\n")
-	hashInclude = []byte(`#include "./`)
-	nlNL        = []byte("\n\n")
+	copyright = []byte(`// Copyright `)
+	dquoteNL  = []byte("\"\n")
+	nl        = []byte("\n")
+	nlNL      = []byte("\n\n")
+
+	hashIncludeAB = []byte(`#include <`)   // AB = Angle Bracket.
+	hashIncludeDQ = []byte(`#include "./`) // DQ = Double Quote.
 )
 
 func cdIconVGRootDirectory() bool {
@@ -92,12 +95,14 @@ func cdIconVGRootDirectory() bool {
 	return true
 }
 
-func expand(w io.Writer, hashIncludeLine []byte) error {
-	if !bytes.HasSuffix(hashIncludeLine, dquoteNL) {
-		return fmt.Errorf("main: unexpected line %q", hashIncludeLine)
+func expand(w io.Writer, line []byte) error {
+	if !bytes.HasSuffix(line, dquoteNL) {
+		return fmt.Errorf("main: unexpected line %q", line)
 	}
-	filename := string(hashIncludeLine[len(hashInclude) : len(hashIncludeLine)-len(dquoteNL)])
-	fmt.Fprintf(w, "// -------------------------------- %s\n", hashIncludeLine)
+	filename := string(line[len(hashIncludeDQ) : len(line)-len(dquoteNL)])
+	if _, err := fmt.Fprintf(w, "// -------------------------------- %s\n", line); err != nil {
+		return err
+	}
 
 	src, err := os.ReadFile(filepath.FromSlash("src/c/" + filename))
 	if err != nil {
@@ -113,19 +118,41 @@ func expand(w io.Writer, hashIncludeLine []byte) error {
 		src = src[i+1:]
 	}
 
-	// Skip the `#include "./etc.h"` lines.
+	// Skip the `#include "./etc.h"` lines but not `#include <etc.h>`.
+	sawHashIncludeAB := false
 	for len(src) > 0 {
 		if src[0] == '\n' {
 			src = src[1:]
-		} else if (src[0] != '#') || !bytes.HasPrefix(src, hashInclude) {
+		} else if src[0] != '#' {
 			break
-		} else if i := bytes.IndexByte(src, '\n'); i < 0 {
-			return fmt.Errorf("main: %q had unsupported local #include", filename)
+		}
+
+		if bytes.HasPrefix(src, hashIncludeAB) {
+			if i := bytes.IndexByte(src, '\n'); i < 0 {
+				return fmt.Errorf("main: %q had unsupported #include", filename)
+			} else {
+				if _, err := w.Write(src[:i+1]); err != nil {
+					return err
+				}
+				src = src[i+1:]
+				sawHashIncludeAB = true
+			}
+		} else if bytes.HasPrefix(src, hashIncludeDQ) {
+			if i := bytes.IndexByte(src, '\n'); i < 0 {
+				return fmt.Errorf("main: %q had unsupported #include", filename)
+			} else {
+				src = src[i+1:]
+			}
 		} else {
-			src = src[i+1:]
+			break
 		}
 	}
 
+	if sawHashIncludeAB {
+		if _, err := w.Write(nl); err != nil {
+			return err
+		}
+	}
 	_, err = w.Write(src)
 	return err
 }

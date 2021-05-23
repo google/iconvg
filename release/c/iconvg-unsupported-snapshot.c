@@ -26,12 +26,10 @@
 
 // -------------------------------- #include "./aaa_public.h"
 
-#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 // ---------------- Version
 
@@ -544,6 +542,9 @@ iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self);
 
 #ifdef ICONVG_IMPLEMENTATION
 // -------------------------------- #include "./aaa_private.h"
+
+#include <math.h>
+#include <string.h>
 
 #define ICONVG_PRIVATE_TRY(err_msg)                   \
   do {                                                \
