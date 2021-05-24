@@ -1196,7 +1196,7 @@ iconvg_make_cairo_canvas(cairo_t* cr) {
 
 #endif  // ICONVG_CONFIG__ENABLE_CAIRO_BACKEND
 
-// -------------------------------- #include "./colors.c"
+// -------------------------------- #include "./color.c"
 
 const uint8_t iconvg_private_one_byte_colors[512] = {
     0x00, 0x00, 0x00, 0xFF,  //
@@ -2775,7 +2775,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
                                            d.len);
 }
 
-// -------------------------------- #include "./errors.c"
+// -------------------------------- #include "./error.c"
 
 const char iconvg_error_bad_color[] =  //
     "iconvg: bad color";

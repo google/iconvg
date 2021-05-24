@@ -29,10 +29,10 @@
 #include "./aaa_private.h"
 #include "./broken.c"
 #include "./cairo.c"
-#include "./colors.c"
+#include "./color.c"
 #include "./debug.c"
 #include "./decoder.c"
-#include "./errors.c"
+#include "./error.c"
 #include "./paint.c"
 #include "./rectangle.c"
 #endif  // ICONVG_IMPLEMENTATION
