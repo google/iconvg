@@ -457,7 +457,8 @@ styling_mode:
       continue;
 
     } else if (opcode < 0xC7) {  // Switch to the drawing mode.
-      memcpy(&state->paint_rgba, &state->creg.colors[sel[0]],
+      uint8_t creg_index = (sel[0] - adjustments[opcode & 0x07]) & 0x3F;
+      memcpy(&state->paint_rgba, &state->creg.colors[creg_index],
              sizeof(state->paint_rgba));
       if (iconvg_paint__type(state) == ICONVG_PAINT_TYPE__INVALID) {
         return iconvg_error_invalid_paint_type;
