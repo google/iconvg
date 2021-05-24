@@ -301,14 +301,6 @@ typedef struct iconvg_canvas_vtable_struct {
                               float y2,
                               float x3,
                               float y3);
-  const char* (*path_arc_to)(struct iconvg_canvas_struct* c,
-                             float radius_x,
-                             float radius_y,
-                             float x_axis_rotation,
-                             bool large_arc,
-                             bool sweep,
-                             float final_x,
-                             float final_y);
   const char* (*on_metadata_viewbox)(struct iconvg_canvas_struct* c,
                                      iconvg_rectangle_f32 viewbox);
   const char* (*on_metadata_suggested_palette)(
@@ -971,18 +963,6 @@ iconvg_private_broken_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_broken_canvas__path_arc_to(iconvg_canvas* c,
-                                          float radius_x,
-                                          float radius_y,
-                                          float x_axis_rotation,
-                                          bool large_arc,
-                                          bool sweep,
-                                          float final_x,
-                                          float final_y) {
-  return ((const char*)(c->context_const_ptr));
-}
-
-static const char*  //
 iconvg_private_broken_canvas__on_metadata_viewbox(
     iconvg_canvas* c,
     iconvg_rectangle_f32 viewbox) {
@@ -1008,7 +988,6 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_broken_canvas__path_line_to,
         &iconvg_private_broken_canvas__path_quad_to,
         &iconvg_private_broken_canvas__path_cube_to,
-        &iconvg_private_broken_canvas__path_arc_to,
         &iconvg_private_broken_canvas__on_metadata_viewbox,
         &iconvg_private_broken_canvas__on_metadata_suggested_palette,
 };
@@ -1350,22 +1329,6 @@ iconvg_private_cairo_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_cairo_canvas__path_arc_to(iconvg_canvas* c,
-                                         float radius_x,
-                                         float radius_y,
-                                         float x_axis_rotation,
-                                         bool large_arc,
-                                         bool sweep,
-                                         float final_x,
-                                         float final_y) {
-  // TODO: convert from SVG's parameterization to Cairo's. Until then, we
-  // substitute in a placeholder cairo_line_to.
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
-  cairo_line_to(cr, final_x, final_y);
-  return NULL;
-}
-
-static const char*  //
 iconvg_private_cairo_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   return NULL;
@@ -1390,7 +1353,6 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_cairo_canvas__path_line_to,
         &iconvg_private_cairo_canvas__path_quad_to,
         &iconvg_private_cairo_canvas__path_cube_to,
-        &iconvg_private_cairo_canvas__path_arc_to,
         &iconvg_private_cairo_canvas__on_metadata_viewbox,
         &iconvg_private_cairo_canvas__on_metadata_suggested_palette,
 };
@@ -1819,33 +1781,6 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_debug_canvas__path_arc_to(iconvg_canvas* c,
-                                         float radius_x,
-                                         float radius_y,
-                                         float x_axis_rotation,
-                                         bool large_arc,
-                                         bool sweep,
-                                         float final_x,
-                                         float final_y) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
-  if (f) {
-    fprintf(f, "%spath_arc_to(%g, %g, %g, %d, %d, %g, %g)\n",
-            ((const char*)(c->context_const_ptr)), radius_x, radius_y,
-            x_axis_rotation, (int)large_arc, (int)sweep, final_x, final_y);
-  }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
-  if (!wrapped) {
-    return NULL;
-  } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
-             sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
-  }
-  return (*wrapped->vtable->path_arc_to)(wrapped, radius_x, radius_y,
-                                         x_axis_rotation, large_arc, sweep,
-                                         final_x, final_y);
-}
-
-static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   FILE* f = (FILE*)(c->context_nonconst_ptr1);
@@ -1915,7 +1850,6 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_debug_canvas__path_line_to,
         &iconvg_private_debug_canvas__path_quad_to,
         &iconvg_private_debug_canvas__path_cube_to,
-        &iconvg_private_debug_canvas__path_arc_to,
         &iconvg_private_debug_canvas__on_metadata_viewbox,
         &iconvg_private_debug_canvas__on_metadata_suggested_palette,
 };

@@ -332,22 +332,6 @@ iconvg_private_cairo_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_cairo_canvas__path_arc_to(iconvg_canvas* c,
-                                         float radius_x,
-                                         float radius_y,
-                                         float x_axis_rotation,
-                                         bool large_arc,
-                                         bool sweep,
-                                         float final_x,
-                                         float final_y) {
-  // TODO: convert from SVG's parameterization to Cairo's. Until then, we
-  // substitute in a placeholder cairo_line_to.
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
-  cairo_line_to(cr, final_x, final_y);
-  return NULL;
-}
-
-static const char*  //
 iconvg_private_cairo_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
   return NULL;
@@ -372,7 +356,6 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_cairo_canvas__path_line_to,
         &iconvg_private_cairo_canvas__path_quad_to,
         &iconvg_private_cairo_canvas__path_cube_to,
-        &iconvg_private_cairo_canvas__path_arc_to,
         &iconvg_private_cairo_canvas__on_metadata_viewbox,
         &iconvg_private_cairo_canvas__on_metadata_suggested_palette,
 };

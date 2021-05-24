@@ -77,18 +77,6 @@ iconvg_private_broken_canvas__path_cube_to(iconvg_canvas* c,
 }
 
 static const char*  //
-iconvg_private_broken_canvas__path_arc_to(iconvg_canvas* c,
-                                          float radius_x,
-                                          float radius_y,
-                                          float x_axis_rotation,
-                                          bool large_arc,
-                                          bool sweep,
-                                          float final_x,
-                                          float final_y) {
-  return ((const char*)(c->context_const_ptr));
-}
-
-static const char*  //
 iconvg_private_broken_canvas__on_metadata_viewbox(
     iconvg_canvas* c,
     iconvg_rectangle_f32 viewbox) {
@@ -114,7 +102,6 @@ static const iconvg_canvas_vtable  //
         &iconvg_private_broken_canvas__path_line_to,
         &iconvg_private_broken_canvas__path_quad_to,
         &iconvg_private_broken_canvas__path_cube_to,
-        &iconvg_private_broken_canvas__path_arc_to,
         &iconvg_private_broken_canvas__on_metadata_viewbox,
         &iconvg_private_broken_canvas__on_metadata_suggested_palette,
 };
