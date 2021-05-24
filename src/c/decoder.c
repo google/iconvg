@@ -741,6 +741,8 @@ drawing_mode:
 
       case 0x0C: {  // 'A' mnemonic: absolute arc_to.
         for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          float x0 = curr_x;
+          float y0 = curr_y;
           if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
               !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
               !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
@@ -749,9 +751,9 @@ drawing_mode:
               !iconvg_private_decoder__decode_coordinate_number(d, &curr_y)) {
             return iconvg_error_bad_coordinate;
           }
-          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
-          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
-              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          ICONVG_PRIVATE_TRY(iconvg_private_path_arc_to(
+              c, scale_x, bias_x, scale_y, bias_y, x0, y0, x1, y1, x2,
+              flags & 0x01, flags & 0x02, curr_x, curr_y));
           x1 = curr_x;
           y1 = curr_y;
         }
@@ -760,6 +762,8 @@ drawing_mode:
 
       case 0x0D: {  // 'a' mnemonic: relative arc_to.
         for (int reps = opcode & 0x0F; reps >= 0; reps--) {
+          float x0 = curr_x;
+          float y0 = curr_y;
           if (!iconvg_private_decoder__decode_coordinate_number(d, &x1) ||
               !iconvg_private_decoder__decode_coordinate_number(d, &y1) ||
               !iconvg_private_decoder__decode_zero_to_one_number(d, &x2) ||
@@ -768,11 +772,11 @@ drawing_mode:
               !iconvg_private_decoder__decode_coordinate_number(d, &y3)) {
             return iconvg_error_bad_coordinate;
           }
-          // TODO: do we have to scale x1 and y1 (radius_x and radius_y)?
           curr_x += x3;
           curr_y += y3;
-          ICONVG_PRIVATE_TRY((*c->vtable->path_arc_to)(
-              c, x1, y1, x2, flags & 0x01, flags & 0x02, curr_x, curr_y));
+          ICONVG_PRIVATE_TRY(iconvg_private_path_arc_to(
+              c, scale_x, bias_x, scale_y, bias_y, x0, y0, x1, y1, x2,
+              flags & 0x01, flags & 0x02, curr_x, curr_y));
           x1 = curr_x;
           y1 = curr_y;
         }

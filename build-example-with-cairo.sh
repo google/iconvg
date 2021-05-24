@@ -28,7 +28,7 @@ mkdir -p gen/bin
 ${CC:-gcc} -O3 -Wall -std=c99 \
     -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
     example/iconvg-to-png/iconvg-to-png.c \
-    -lcairo -lpng \
+    -lcairo -lm -lpng \
     -o gen/bin/iconvg-to-png-with-cairo
 
 echo "Built gen/bin/iconvg-to-png-with-cairo"
@@ -36,7 +36,7 @@ echo "Built gen/bin/iconvg-to-png-with-cairo"
 ${CC:-gcc} -O3 -Wall -std=c99 \
     -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
     example/iconvg-viewer/iconvg-viewer.c \
-    -lcairo -lxcb -lxcb-image \
+    -lcairo -lm -lxcb -lxcb-image \
     -o gen/bin/iconvg-viewer-with-cairo
 
 echo "Built gen/bin/iconvg-viewer-with-cairo"

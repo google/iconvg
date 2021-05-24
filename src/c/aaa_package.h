@@ -27,6 +27,7 @@
 #include "./aaa_public.h"
 #ifdef ICONVG_IMPLEMENTATION
 #include "./aaa_private.h"
+#include "./arc.c"
 #include "./broken.c"
 #include "./cairo.c"
 #include "./color.c"

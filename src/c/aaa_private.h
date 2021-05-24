@@ -161,3 +161,21 @@ struct iconvg_paint_struct {
   double d2s_scale_y;
   double d2s_bias_y;
 };
+
+// ----
+
+const char*  //
+iconvg_private_path_arc_to(iconvg_canvas* c,
+                           double scale_x,
+                           double bias_x,
+                           double scale_y,
+                           double bias_y,
+                           float initial_x,
+                           float initial_y,
+                           float radius_x,
+                           float radius_y,
+                           float x_axis_rotation,
+                           bool large_arc,
+                           bool sweep,
+                           float final_x,
+                           float final_y);
