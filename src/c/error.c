@@ -37,6 +37,9 @@ const char iconvg_error_bad_path_unfinished[] =  //
 const char iconvg_error_bad_styling_opcode[] =  //
     "iconvg: bad styling opcode";
 
+const char iconvg_error_system_failure_out_of_memory[] =  //
+    "iconvg: system failure: out of memory";
+
 const char iconvg_error_invalid_backend_not_enabled[] =  //
     "iconvg: invalid backend (not enabled)";
 const char iconvg_error_invalid_constructor_argument[] =  //

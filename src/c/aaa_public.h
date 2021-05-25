@@ -58,6 +58,9 @@
 //
 // bad_etc indicates a file format error. The source bytes are not IconVG.
 //
+// system_failure_etc indicates a system or resource issue, such as running out
+// of memory or file descriptors.
+//
 // Other errors (invalid_etc, null_etc, unsupported_etc) are programming errors
 // instead of file format errors.
 
@@ -72,6 +75,8 @@ extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
+
+extern const char iconvg_error_system_failure_out_of_memory[];
 
 extern const char iconvg_error_invalid_backend_not_enabled[];
 extern const char iconvg_error_invalid_constructor_argument[];
@@ -188,6 +193,9 @@ typedef struct iconvg_paint_struct iconvg_paint;
 //
 //   new_x = (old_x * elems[0][0]) + (old_y * elems[0][1]) + elems[0][2]
 //   new_y = (old_x * elems[1][0]) + (old_y * elems[1][1]) + elems[1][2]
+//
+// The 2x3 matrix is equivalent to a 3x3 matrix whose bottom row is [0, 0, 1].
+// The 3x3 form works on 3-element vectors [x, y, 1].
 typedef struct iconvg_matrix_2x3_f64_struct {
   double elems[2][3];
 } iconvg_matrix_2x3_f64;
@@ -208,6 +216,16 @@ iconvg_make_matrix_2x3_f64(double elems00,
   m.elems[1][1] = elems11;
   m.elems[1][2] = elems12;
   return m;
+}
+
+// iconvg_matrix_2x3_f64__determinant returns self's determinant.
+static inline double  //
+iconvg_matrix_2x3_f64__determinant(iconvg_matrix_2x3_f64* self) {
+  if (!self) {
+    return 0;
+  }
+  return (self->elems[0][0] * self->elems[1][1]) -
+         (self->elems[0][1] * self->elems[1][0]);
 }
 
 // ----
@@ -388,6 +406,22 @@ iconvg_make_cairo_canvas(cairo_t* cr);
 
 // ----
 
+typedef struct sk_canvas_t sk_canvas_t;
+
+// iconvg_make_skia_canvas returns an iconvg_canvas that is backed by the Skia
+// graphics library, if the ICONVG_CONFIG__ENABLE_SKIA_BACKEND macro was
+// defined when the IconVG library was built.
+//
+// If that macro was not defined then the returned value will be broken (with
+// iconvg_error_invalid_backend_not_enabled).
+//
+// If sc is NULL then the returned value will be broken (with
+// iconvg_error_invalid_constructor_argument).
+iconvg_canvas  //
+iconvg_make_skia_canvas(sk_canvas_t* sc);
+
+// ----
+
 // iconvg_decode decodes the src IconVG-formatted data, calling dst_canvas's
 // callbacks (vtable functions) to paint the decoded vector graphic.
 //
@@ -493,11 +527,32 @@ iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
 // paint or gradient coordinate space).
 //
 // Pattern coordinate space is where linear gradients always range from x=0 to
-// x=1 and radial gradients are always centre=(0,0) and radius=1.
+// x=1 and radial gradients are always center=(0,0) and radius=1.
 //
 // If self is not a gradient then the result may be non-sensical.
 iconvg_matrix_2x3_f64  //
 iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self);
+
+// ----
+
+// iconvg_matrix_2x3_f64__inverse returns self's inverse.
+iconvg_matrix_2x3_f64  //
+iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self);
+
+// iconvg_matrix_2x3_f64__override_second_row sets self's second row's values
+// such that self has a non-zero determinant (and is therefore invertible). The
+// second row is the bottom row of the 2x3 matrix, which is also the middle row
+// of the equivalent 3x3 matrix after adding an implicit [0, 0, 1] third row.
+//
+// If self->elems[0][0] and self->elems[0][1] are both zero then this function
+// might also change the first row, again to produce a non-zero determinant.
+//
+// IconVG linear gradients range from x=0 to x=1 in pattern space, independent
+// of y. The second row therefore doesn't matter (because it's "independent of
+// y") and can be [0, 0, 0] in the IconVG file format. However, some other
+// graphics libraries need the transformation matrix to be invertible.
+void  //
+iconvg_matrix_2x3_f64__override_second_row(iconvg_matrix_2x3_f64* self);
 
 // ----
 
@@ -516,4 +571,18 @@ iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"
+
+class SkCanvas;
+
+namespace iconvg {
+
+// iconvg::make_skia_canvas is equivalent to iconvg_make_skia_canvas except
+// that it takes a SkCanvas* argument (part of Skia's C++ API) instead of a
+// sk_canvas_t* argument (part of Skia's C API).
+static inline iconvg_canvas  //
+make_skia_canvas(SkCanvas* sc) {
+  return iconvg_make_skia_canvas(reinterpret_cast<sk_canvas_t*>(sc));
+}
+
+}  // namespace iconvg
 #endif

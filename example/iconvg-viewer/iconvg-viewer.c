@@ -87,7 +87,7 @@ const char*  //
 initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   if (!pb) {
     return "main: NULL pixel_buffer";
-  } else if ((((int)width) < 0) || (((int)height) < 0)) {
+  } else if ((width > 0x7FFF) || (height > 0x7FFF)) {
     return "main: dimensions are too large";
   }
   cairo_surface_t* cs =
@@ -150,9 +150,110 @@ finalize_pixel_buffer(pixel_buffer* pb) {
   }
   if (pb->extra1) {
     cairo_destroy((cairo_t*)(pb->extra1));
+    pb->extra1 = NULL;
   }
   if (pb->extra0) {
     cairo_surface_destroy((cairo_surface_t*)(pb->extra0));
+    pb->extra0 = NULL;
+  }
+  return NULL;
+}
+
+#elif defined(ICONVG_CONFIG__ENABLE_SKIA_BACKEND)
+
+#include "include/c/sk_imageinfo.h"
+#include "include/c/sk_surface.h"
+
+const char*  //
+initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  } else if ((width > 0x7FFF) || (height > 0x7FFF)) {
+    return "main: dimensions are too large";
+  }
+
+  uint8_t* data = (uint8_t*)(malloc(4 * width * height));
+  if (!data) {
+    return "main: could not allocate pixel buffer data";
+  }
+
+  sk_imageinfo_t* si =
+      sk_imageinfo_new((int)width, (int)height, BGRA_8888_SK_COLORTYPE,
+                       PREMUL_SK_ALPHATYPE, NULL);
+  if (!si) {
+    free(data);
+    return "main: could not create sk_imageinfo_t";
+  }
+  sk_surface_t* ss = sk_surface_new_raster_direct(si, data, 4 * width, NULL);
+  sk_imageinfo_delete(si);
+  if (!ss) {
+    free(data);
+    return "main: could not create sk_surface_t";
+  }
+  sk_canvas_t* sc = sk_surface_get_canvas(ss);
+  if (!sc) {
+    sk_surface_unref(ss);
+    free(data);
+    return "main: could not create sk_canvas_t";
+  }
+
+  // Draw the checkerboard background.
+  sk_color_t background_colors[2];
+  background_colors[0] = sk_color_set_argb(
+      0xFF,
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][0])),
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][1])),
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][2])));
+  background_colors[1] = sk_color_set_argb(
+      0xFF,
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][3])),
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][4])),
+      ((uint8_t)(0xFF * g_background_colors[g_background_color_index][5])));
+  sk_paint_t* sp = sk_paint_new();
+  sk_paint_set_xfermode_mode(sp, SRC_SK_XFERMODE_MODE);
+  for (uint32_t y = 0; y < height; y += 64) {
+    for (uint32_t x = 0; x < width; x += 64) {
+      uint32_t xor = ((x ^ y) >> 6) & 1;
+      sk_rect_t rect;
+      rect.left = x;
+      rect.top = y;
+      rect.right = x + 64;
+      rect.bottom = y + 64;
+      sk_paint_set_color(sp, background_colors[xor]);
+      sk_canvas_draw_rect(sc, &rect, sp);
+    }
+  }
+  sk_paint_delete(sp);
+
+  *pb = ((pixel_buffer){0});
+  pb->data = data;
+  pb->width = width;
+  pb->height = height;
+  pb->canvas = iconvg_make_skia_canvas(sc);
+  pb->extra0 = ss;
+  return NULL;
+}
+
+const char*  //
+flush_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  }
+  return NULL;
+}
+
+const char*  //
+finalize_pixel_buffer(pixel_buffer* pb) {
+  if (!pb) {
+    return "main: NULL pixel_buffer";
+  }
+  if (pb->extra0) {
+    sk_surface_unref((sk_surface_t*)(pb->extra0));
+    pb->extra0 = NULL;
+  }
+  if (pb->data) {
+    free(pb->data);
+    pb->data = NULL;
   }
   return NULL;
 }

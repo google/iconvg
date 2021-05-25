@@ -146,7 +146,7 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   //
   // Pattern coordinate space (also known as paint or gradient coordinate
   // space) is where linear gradients always range from x=0 to x=1 and radial
-  // gradients are always centre=(0,0) and radius=1. We can't just return this
+  // gradients are always center=(0,0) and radius=1. We can't just return this
   // matrix to the caller. We need to produce the equivalent [d00, d01, d02;
   // d10, d11, d12] matrix that transforms from *dst* coordinates to pattern
   // coordinates. Recall that:

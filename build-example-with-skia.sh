@@ -16,7 +16,16 @@
 # ----------------
 
 # On a Debian or Ubuntu system, you might first need to run:
-#   sudo apt install libcairo2-dev libpng-dev libxcb1-dev libxcb-image0-dev
+#   sudo apt install libpng-dev libxcb1-dev libxcb-image0-dev
+#
+# You will also need to build Skia from source (as a shared library) and set
+# SKIA_LIB_DIR before running this script. See the https link below.
+
+if [[ -z ${SKIA_LIB_DIR:-} ]]; then
+  echo "Cannot run build-example-with-skia.sh unless SKIA_LIB_DIR is set. See"
+  echo "https://github.com/google/skia/blob/9b2baac1d6500a66f661b8efe453cd13ff34e40e/experimental/c-api-example/c.md#example"
+  exit 1
+fi
 
 if [ ! -e iconvg-root-directory.txt ]; then
   echo "$0 should be run from the IconVG root directory."
@@ -27,20 +36,28 @@ mkdir -p gen/bin
 
 # ----
 
-echo "Building gen/bin/iconvg-to-png-with-cairo"
+echo "Building gen/bin/iconvg-to-png-with-skia"
 
 ${CC:-gcc} -O3 -Wall -std=c99 \
-    -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
+    -DICONVG_CONFIG__ENABLE_SKIA_BACKEND \
+    -I $SKIA_LIB_DIR/../.. \
     example/iconvg-to-png/iconvg-to-png.c \
-    -lcairo -lm -lpng \
-    -o gen/bin/iconvg-to-png-with-cairo
+    $SKIA_LIB_DIR/libskia.* \
+    -lm -lpng \
+    -o gen/bin/iconvg-to-png-with-skia \
+    -Wl,-rpath \
+    -Wl,$SKIA_LIB_DIR
 
 # ----
 
-echo "Building gen/bin/iconvg-viewer-with-cairo"
+echo "Building gen/bin/iconvg-viewer-with-skia"
 
 ${CC:-gcc} -O3 -Wall -std=c99 \
-    -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
+    -DICONVG_CONFIG__ENABLE_SKIA_BACKEND \
+    -I $SKIA_LIB_DIR/../.. \
     example/iconvg-viewer/iconvg-viewer.c \
-    -lcairo -lm -lxcb -lxcb-image \
-    -o gen/bin/iconvg-viewer-with-cairo
+    $SKIA_LIB_DIR/libskia.* \
+    -lm -lxcb -lxcb-image \
+    -o gen/bin/iconvg-viewer-with-skia \
+    -Wl,-rpath \
+    -Wl,$SKIA_LIB_DIR

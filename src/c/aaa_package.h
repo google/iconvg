@@ -34,8 +34,10 @@
 #include "./debug.c"
 #include "./decoder.c"
 #include "./error.c"
+#include "./matrix.c"
 #include "./paint.c"
 #include "./rectangle.c"
+#include "./skia.c"
 #endif  // ICONVG_IMPLEMENTATION
 
 #endif  // ICONVG_INCLUDE_GUARD

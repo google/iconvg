@@ -72,6 +72,9 @@
 //
 // bad_etc indicates a file format error. The source bytes are not IconVG.
 //
+// system_failure_etc indicates a system or resource issue, such as running out
+// of memory or file descriptors.
+//
 // Other errors (invalid_etc, null_etc, unsupported_etc) are programming errors
 // instead of file format errors.
 
@@ -86,6 +89,8 @@ extern const char iconvg_error_bad_metadata_viewbox[];
 extern const char iconvg_error_bad_number[];
 extern const char iconvg_error_bad_path_unfinished[];
 extern const char iconvg_error_bad_styling_opcode[];
+
+extern const char iconvg_error_system_failure_out_of_memory[];
 
 extern const char iconvg_error_invalid_backend_not_enabled[];
 extern const char iconvg_error_invalid_constructor_argument[];
@@ -202,6 +207,9 @@ typedef struct iconvg_paint_struct iconvg_paint;
 //
 //   new_x = (old_x * elems[0][0]) + (old_y * elems[0][1]) + elems[0][2]
 //   new_y = (old_x * elems[1][0]) + (old_y * elems[1][1]) + elems[1][2]
+//
+// The 2x3 matrix is equivalent to a 3x3 matrix whose bottom row is [0, 0, 1].
+// The 3x3 form works on 3-element vectors [x, y, 1].
 typedef struct iconvg_matrix_2x3_f64_struct {
   double elems[2][3];
 } iconvg_matrix_2x3_f64;
@@ -222,6 +230,16 @@ iconvg_make_matrix_2x3_f64(double elems00,
   m.elems[1][1] = elems11;
   m.elems[1][2] = elems12;
   return m;
+}
+
+// iconvg_matrix_2x3_f64__determinant returns self's determinant.
+static inline double  //
+iconvg_matrix_2x3_f64__determinant(iconvg_matrix_2x3_f64* self) {
+  if (!self) {
+    return 0;
+  }
+  return (self->elems[0][0] * self->elems[1][1]) -
+         (self->elems[0][1] * self->elems[1][0]);
 }
 
 // ----
@@ -402,6 +420,22 @@ iconvg_make_cairo_canvas(cairo_t* cr);
 
 // ----
 
+typedef struct sk_canvas_t sk_canvas_t;
+
+// iconvg_make_skia_canvas returns an iconvg_canvas that is backed by the Skia
+// graphics library, if the ICONVG_CONFIG__ENABLE_SKIA_BACKEND macro was
+// defined when the IconVG library was built.
+//
+// If that macro was not defined then the returned value will be broken (with
+// iconvg_error_invalid_backend_not_enabled).
+//
+// If sc is NULL then the returned value will be broken (with
+// iconvg_error_invalid_constructor_argument).
+iconvg_canvas  //
+iconvg_make_skia_canvas(sk_canvas_t* sc);
+
+// ----
+
 // iconvg_decode decodes the src IconVG-formatted data, calling dst_canvas's
 // callbacks (vtable functions) to paint the decoded vector graphic.
 //
@@ -507,11 +541,32 @@ iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
 // paint or gradient coordinate space).
 //
 // Pattern coordinate space is where linear gradients always range from x=0 to
-// x=1 and radial gradients are always centre=(0,0) and radius=1.
+// x=1 and radial gradients are always center=(0,0) and radius=1.
 //
 // If self is not a gradient then the result may be non-sensical.
 iconvg_matrix_2x3_f64  //
 iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self);
+
+// ----
+
+// iconvg_matrix_2x3_f64__inverse returns self's inverse.
+iconvg_matrix_2x3_f64  //
+iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self);
+
+// iconvg_matrix_2x3_f64__override_second_row sets self's second row's values
+// such that self has a non-zero determinant (and is therefore invertible). The
+// second row is the bottom row of the 2x3 matrix, which is also the middle row
+// of the equivalent 3x3 matrix after adding an implicit [0, 0, 1] third row.
+//
+// If self->elems[0][0] and self->elems[0][1] are both zero then this function
+// might also change the first row, again to produce a non-zero determinant.
+//
+// IconVG linear gradients range from x=0 to x=1 in pattern space, independent
+// of y. The second row therefore doesn't matter (because it's "independent of
+// y") and can be [0, 0, 0] in the IconVG file format. However, some other
+// graphics libraries need the transformation matrix to be invertible.
+void  //
+iconvg_matrix_2x3_f64__override_second_row(iconvg_matrix_2x3_f64* self);
 
 // ----
 
@@ -530,6 +585,20 @@ iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self);
 
 #ifdef __cplusplus
 }  // extern "C"
+
+class SkCanvas;
+
+namespace iconvg {
+
+// iconvg::make_skia_canvas is equivalent to iconvg_make_skia_canvas except
+// that it takes a SkCanvas* argument (part of Skia's C++ API) instead of a
+// sk_canvas_t* argument (part of Skia's C API).
+static inline iconvg_canvas  //
+make_skia_canvas(SkCanvas* sc) {
+  return iconvg_make_skia_canvas(reinterpret_cast<sk_canvas_t*>(sc));
+}
+
+}  // namespace iconvg
 #endif
 
 #ifdef ICONVG_IMPLEMENTATION
@@ -1042,45 +1111,6 @@ iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(iconvg_matrix_2x3_f64 i) {
   return c;
 }
 
-// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row is like
-// iconvg_private_matrix_2x3_f64_as_cairo_matrix_t but overrides the bottom row
-// of the 2x3 transformation matrix.
-//
-// IconVG linear gradients range from x=0 to x=1 in pattern space, independent
-// of y. The bottom row therefore doesn't matter (because it's "independent of
-// y") and can be [0, 0, 0] in the IconVG file format. However, Cairo needs the
-// matrix to be invertible, so we override the bottom row with dummy values,
-// like [1, 0, 0] or [0, 1, 0], so that the matrix determinant ((c.xx * c.yy) -
-// (c.xy * c.yx)) is non-zero.
-static inline cairo_matrix_t  //
-iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
-    iconvg_matrix_2x3_f64 i) {
-  cairo_matrix_t c;
-  c.xx = i.elems[0][0];
-  c.xy = i.elems[0][1];
-  c.x0 = i.elems[0][2];
-
-  if (c.xx != 0) {
-    c.yx = 0.0;
-    c.yy = 1.0;
-    c.y0 = 0.0;
-  } else if (c.xy != 0) {
-    c.yx = 1.0;
-    c.yy = 0.0;
-    c.y0 = 0.0;
-  } else {
-    // 1e-10 is arbitrary but very small and squaring it still gives
-    // something larger than FLT_MIN, approximately 1.175494e-38.
-    c.xx = 1e-10;
-    c.xy = 0.0;
-    // cx0 is unchanged.
-    c.yx = 0.0;
-    c.yy = 1e-10;
-    c.y0 = 0.0;
-  }
-  return c;
-}
-
 // iconvg_private_cairo_set_gradient_stops sets the Cairo gradient stop colors
 // given the IconVG gradient stop colors.
 //
@@ -1115,8 +1145,8 @@ iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
   double b0 = 0.0;
   double a0 = 0.0;
 
-  uint32_t n = iconvg_paint__gradient_number_of_stops(p);
-  for (uint32_t i = 0; i < n; i++) {
+  uint32_t num_stops = iconvg_paint__gradient_number_of_stops(p);
+  for (uint32_t i = 0; i < num_stops; i++) {
     // Calculate offset and color for the current stop.
     double offset2 = iconvg_paint__gradient_stop_offset(p, i);
     iconvg_premul_color k =
@@ -1227,16 +1257,19 @@ iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
     }
 
     case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
+      iconvg_matrix_2x3_f64 gtm =
+          iconvg_paint__gradient_transformation_matrix(p);
+      iconvg_matrix_2x3_f64__override_second_row(&gtm);
       cp = cairo_pattern_create_linear(0, 0, 1, 0);
-      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t_override_bottom_row(
-          iconvg_paint__gradient_transformation_matrix(p));
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(gtm);
       break;
     }
 
     case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
+      iconvg_matrix_2x3_f64 gtm =
+          iconvg_paint__gradient_transformation_matrix(p);
       cp = cairo_pattern_create_radial(0, 0, 0, 0, 0, 1);
-      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(
-          iconvg_paint__gradient_transformation_matrix(p));
+      cm = iconvg_private_matrix_2x3_f64_as_cairo_matrix_t(gtm);
       break;
     }
 
@@ -2953,6 +2986,9 @@ const char iconvg_error_bad_path_unfinished[] =  //
 const char iconvg_error_bad_styling_opcode[] =  //
     "iconvg: bad styling opcode";
 
+const char iconvg_error_system_failure_out_of_memory[] =  //
+    "iconvg: system failure: out of memory";
+
 const char iconvg_error_invalid_backend_not_enabled[] =  //
     "iconvg: invalid backend (not enabled)";
 const char iconvg_error_invalid_constructor_argument[] =  //
@@ -2980,6 +3016,50 @@ iconvg_error_is_file_format_error(const char* err_msg) {
          (err_msg == iconvg_error_bad_number) ||
          (err_msg == iconvg_error_bad_path_unfinished) ||
          (err_msg == iconvg_error_bad_styling_opcode);
+}
+
+// -------------------------------- #include "./matrix.c"
+
+iconvg_matrix_2x3_f64  //
+iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self) {
+  double inv = 1.0 / iconvg_matrix_2x3_f64__determinant(self);
+  if (isinf(inv) || isnan(inv)) {
+    return iconvg_make_matrix_2x3_f64(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  }
+
+  // https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
+  // recalling that self's implicit bottom row is [0, 0, 1].
+  double e02 = (self->elems[0][1] * self->elems[1][2]) -
+               (self->elems[0][2] * self->elems[1][1]);
+  double e12 = (self->elems[0][0] * self->elems[1][2]) -
+               (self->elems[0][2] * self->elems[1][0]);
+  return iconvg_make_matrix_2x3_f64(+inv * self->elems[1][1],  //
+                                    -inv * self->elems[0][1],  //
+                                    +inv * e02,                //
+                                    -inv * self->elems[1][0],  //
+                                    +inv * self->elems[0][0],  //
+                                    -inv * e12);               //
+}
+
+void  //
+iconvg_matrix_2x3_f64__override_second_row(iconvg_matrix_2x3_f64* self) {
+  if (!self) {
+    return;
+  }
+  if (self->elems[0][0] != 0.0) {
+    self->elems[1][0] = 0.0;
+    self->elems[1][1] = 1.0;
+  } else if (self->elems[0][1] != 0.0) {
+    self->elems[1][0] = 1.0;
+    self->elems[1][1] = 0.0;
+  } else {
+    // 1e-10 is arbitrary but very small and squaring it still gives
+    // something larger than FLT_MIN, approximately 1.175494e-38.
+    self->elems[0][0] = 1e-10;
+    self->elems[0][1] = 0.0;
+    self->elems[1][0] = 0.0;
+    self->elems[1][1] = 1e-10;
+  }
 }
 
 // -------------------------------- #include "./paint.c"
@@ -3116,7 +3196,7 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   //
   // Pattern coordinate space (also known as paint or gradient coordinate
   // space) is where linear gradients always range from x=0 to x=1 and radial
-  // gradients are always centre=(0,0) and radius=1. We can't just return this
+  // gradients are always center=(0,0) and radius=1. We can't just return this
   // matrix to the caller. We need to produce the equivalent [d00, d01, d02;
   // d10, d11, d12] matrix that transforms from *dst* coordinates to pattern
   // coordinates. Recall that:
@@ -3170,6 +3250,391 @@ iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self) {
   }
   return 0.0;
 }
+
+// -------------------------------- #include "./skia.c"
+
+#if !defined(ICONVG_CONFIG__ENABLE_SKIA_BACKEND)
+
+iconvg_canvas  //
+iconvg_make_skia_canvas(sk_canvas_t* sc) {
+  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+}
+
+#else  // ICONVG_CONFIG__ENABLE_SKIA_BACKEND
+
+#include "include/c/sk_canvas.h"
+#include "include/c/sk_matrix.h"
+#include "include/c/sk_paint.h"
+#include "include/c/sk_path.h"
+#include "include/c/sk_shader.h"
+
+static const sk_shader_tilemode_t
+    iconvg_private_gradient_spread_as_sk_shader_tilemode_t[4] = {
+        CLAMP_SK_SHADER_TILEMODE,   //
+        CLAMP_SK_SHADER_TILEMODE,   //
+        MIRROR_SK_SHADER_TILEMODE,  //
+        REPEAT_SK_SHADER_TILEMODE   //
+};
+
+// iconvg_private_skia_set_gradient_stops sets the Skia gradient stop colors
+// given the IconVG gradient stop colors.
+//
+// Like iconvg_private_cairo_set_gradient_stops, the complexity is due to
+// premultiplied versus non-premultiplied alpha.
+//
+// It returns the number of Skia stops added.
+static uint32_t  //
+iconvg_private_skia_set_gradient_stops(sk_color_t* gcol,
+                                       float* goff,
+                                       const iconvg_paint* p) {
+  uint32_t ret = 0;
+
+  // foo0 and foo2 are the previous and current gradient stop. Sometimes we
+  // need to synthesize additional stops in between them, whose variables are
+  // named foo1.
+  double offset0 = 0.0;
+  uint8_t r0 = 0x00;
+  uint8_t g0 = 0x00;
+  uint8_t b0 = 0x00;
+  uint8_t a0 = 0x00;
+
+  uint32_t num_stops = iconvg_paint__gradient_number_of_stops(p);
+  for (uint32_t i = 0; i < num_stops; i++) {
+    // Calculate offset and color for the current stop.
+    double offset2 = iconvg_paint__gradient_stop_offset(p, i);
+    iconvg_premul_color k =
+        iconvg_paint__gradient_stop_color_as_premul_color(p, i);
+    uint8_t r2 = k.rgba[0];
+    uint8_t g2 = k.rgba[1];
+    uint8_t b2 = k.rgba[2];
+    uint8_t a2 = k.rgba[3];
+
+    if ((i == 0) ||                        //
+        ((a0 == 0xFF) && (a2 == 0xFF)) ||  //
+        ((a0 == 0x00) && (a2 == 0x00))) {
+      // If it's the first stop, or if we're interpolating from 100% to 100%
+      // opaque or from 0% to 0% opaque, we don't have to worry about
+      // premultiplied versus non-premultiplied alpha.
+      *gcol++ = sk_color_set_argb(a2, r2, g2, b2);
+      *goff++ = offset2;
+      ret++;
+
+    } else if (a0 == 0x00) {
+      // If we're blending e.g. from transparent black to (partially) opaque
+      // blue, insert "transparent blue" immediately after the previous
+      // "transparent black".
+      *gcol++ = sk_color_set_argb(0x00, r2, g2, b2);
+      *goff++ = offset0;
+      *gcol++ = sk_color_set_argb(a2, r2, g2, b2);
+      *goff++ = offset2;
+      ret += 2;
+
+    } else if (a2 == 0x00) {
+      // If we're blending e.g. from (partially) opaque blue to transparent
+      // black, insert "transparent blue" immediately before the current
+      // "transparent black".
+      *gcol++ = sk_color_set_argb(0x00, r0, g0, b0);
+      *goff++ = offset2;
+      *gcol++ = sk_color_set_argb(a2, r2, g2, b2);
+      *goff++ = offset2;
+      ret += 2;
+
+    } else {
+      // Otherwise, fake "interpolate with premultiplied alpha" like
+      // iconvg_private_cairo_set_gradient_stops does.
+      const int32_t n = 16;
+      for (int32_t i = (n - 1); i >= 0; i--) {
+        int32_t j = n - i;
+        double offset1 = ((i * offset0) + (j * offset2)) / n;
+        uint8_t r1 = ((i * r0) + (j * r2)) / n;
+        uint8_t g1 = ((i * g0) + (j * g2)) / n;
+        uint8_t b1 = ((i * b0) + (j * b2)) / n;
+        uint8_t a1 = ((i * a0) + (j * a2)) / n;
+        if (a1 == 0x00) {
+          *gcol++ = sk_color_set_argb(0x00, 0x00, 0x00, 0x00);
+          *goff++ = offset1;
+          ret++;
+        } else {
+          *gcol++ = sk_color_set_argb(a1,                 //
+                                      (0xFF * r1) / a1,   //
+                                      (0xFF * g1) / a1,   //
+                                      (0xFF * b1) / a1);  //
+          *goff++ = offset1;
+          ret++;
+        }
+      }
+    }
+
+    // Update offset and color for the previous stop.
+    offset0 = offset2;
+    r0 = r2;
+    g0 = g2;
+    b0 = b2;
+    a0 = a2;
+  }
+
+  return ret;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__begin_decode(iconvg_canvas* c,
+                                         iconvg_rectangle_f32 dst_rect) {
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
+  sk_canvas_save(sc);
+
+  sk_rect_t rect;
+  rect.left = dst_rect.min_x;
+  rect.top = dst_rect.min_y;
+  rect.right = dst_rect.max_x;
+  rect.bottom = dst_rect.max_y;
+  sk_canvas_clip_rect(sc, &rect);
+
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__end_decode(iconvg_canvas* c,
+                                       const char* err_msg,
+                                       size_t num_bytes_consumed,
+                                       size_t num_bytes_remaining) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  if (spb) {
+    sk_pathbuilder_delete(spb);
+    c->context_nonconst_ptr1 = NULL;
+  }
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
+  sk_canvas_restore(sc);
+  return err_msg;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__begin_drawing(iconvg_canvas* c) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  if (spb) {
+    sk_pathbuilder_delete(spb);
+    c->context_nonconst_ptr1 = NULL;
+  }
+  spb = sk_pathbuilder_new();
+  if (!spb) {
+    return iconvg_error_system_failure_out_of_memory;
+  }
+  c->context_nonconst_ptr1 = spb;
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__end_drawing(iconvg_canvas* c,
+                                        const iconvg_paint* p) {
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+
+  iconvg_paint_type paint_type = iconvg_paint__type(p);
+  switch (paint_type) {
+    case ICONVG_PAINT_TYPE__FLAT_COLOR: {
+      iconvg_nonpremul_color k = iconvg_paint__flat_color_as_nonpremul_color(p);
+      sk_path_t* path = sk_pathbuilder_detach_path(spb);
+      sk_paint_t* paint = sk_paint_new();
+      sk_paint_set_antialias(paint, true);
+      sk_paint_set_color(
+          paint, sk_color_set_argb(k.rgba[3], k.rgba[0], k.rgba[1], k.rgba[2]));
+      sk_canvas_draw_path(sc, path, paint);
+      sk_paint_delete(paint);
+      sk_path_delete(path);
+      return NULL;
+    }
+    case ICONVG_PAINT_TYPE__LINEAR_GRADIENT:
+    case ICONVG_PAINT_TYPE__RADIAL_GRADIENT:
+      break;
+    default:
+      return iconvg_error_invalid_paint_type;
+  }
+
+  // The matrix in IconVG's API converts from dst coordinate space to pattern
+  // coordinate space. Skia's API is the other way around (matrix inversion).
+  iconvg_matrix_2x3_f64 im = iconvg_paint__gradient_transformation_matrix(p);
+  if (paint_type == ICONVG_PAINT_TYPE__LINEAR_GRADIENT) {
+    iconvg_matrix_2x3_f64__override_second_row(&im);
+  }
+  im = iconvg_matrix_2x3_f64__inverse(&im);
+  sk_matrix_t sm;
+  sm.mat[0] = im.elems[0][0];
+  sm.mat[1] = im.elems[0][1];
+  sm.mat[2] = im.elems[0][2];
+  sm.mat[3] = im.elems[1][0];
+  sm.mat[4] = im.elems[1][1];
+  sm.mat[5] = im.elems[1][2];
+  sm.mat[6] = 0.0f;
+  sm.mat[7] = 0.0f;
+  sm.mat[8] = 1.0f;
+
+  // The gradient is either:
+  //   - linear, from (0, 0) to (1, 0), or
+  //   - radial, centered at (0, 0).
+  sk_point_t gradient_points[2];
+  gradient_points[0].x = 0;
+  gradient_points[0].y = 0;
+  gradient_points[1].x = 1;
+  gradient_points[1].y = 0;
+
+  // Configure the gradient stops.
+  //
+  // Skia doesn't have NONE_SK_SHADER_TILEMODE. Use CLAMP_SK_SHADER_TILEMODE
+  // instead, for IconVG's ICONVG_GRADIENT_SPREAD__NONE, adding a transparent
+  // black gradient stop at both ends.
+  //
+  // 1010 equals ((63 * 16) + 2). 63 is the maximum (inclusive) number of
+  // gradient stops. iconvg_private_skia_set_gradient_stops can expand each
+  // IconVG stop to up to 16 Skia stops. There's also 2 extra stops if we
+  // use the ICONVG_GRADIENT_SPREAD__NONE workaround.
+  sk_color_t gradient_colors[1010];
+  float gradient_offsets[1010];
+  sk_color_t* gcol = &gradient_colors[0];
+  float* goff = &gradient_offsets[0];
+  iconvg_gradient_spread gradient_spread = iconvg_paint__gradient_spread(p);
+  uint32_t gradient_num_stops = 0;
+  if (gradient_spread == ICONVG_GRADIENT_SPREAD__NONE) {
+    *gcol++ = sk_color_set_argb(0x00, 0x00, 0x00, 0x00);
+    *goff++ = 0.0f;
+    gradient_num_stops++;
+  }
+  {
+    uint32_t additional_stops =
+        iconvg_private_skia_set_gradient_stops(gcol, goff, p);
+    gcol += additional_stops;
+    goff += additional_stops;
+    gradient_num_stops += additional_stops;
+  }
+  if (gradient_spread == ICONVG_GRADIENT_SPREAD__NONE) {
+    *gcol++ = sk_color_set_argb(0x00, 0x00, 0x00, 0x00);
+    *goff++ = 0.0f;
+    gradient_num_stops++;
+  }
+
+  // Make the Skia shader.
+  sk_shader_t* shader = NULL;
+  if (paint_type == ICONVG_PAINT_TYPE__LINEAR_GRADIENT) {
+    shader = sk_shader_new_linear_gradient(
+        gradient_points, gradient_colors, gradient_offsets, gradient_num_stops,
+        iconvg_private_gradient_spread_as_sk_shader_tilemode_t[gradient_spread],
+        &sm);
+  } else {
+    static const float radius = 1.0f;
+    shader = sk_shader_new_radial_gradient(
+        gradient_points, radius, gradient_colors, gradient_offsets,
+        gradient_num_stops,
+        iconvg_private_gradient_spread_as_sk_shader_tilemode_t[gradient_spread],
+        &sm);
+  }
+
+  // Use the Skia shader.
+  if (shader) {
+    sk_path_t* path = sk_pathbuilder_detach_path(spb);
+    sk_paint_t* paint = sk_paint_new();
+    sk_paint_set_antialias(paint, true);
+    sk_paint_set_shader(paint, shader);
+    sk_shader_unref(shader);
+    sk_canvas_draw_path(sc, path, paint);
+    sk_paint_delete(paint);
+    sk_path_delete(path);
+  }
+
+  // Clean up.
+  if (spb) {
+    sk_pathbuilder_delete(spb);
+    c->context_nonconst_ptr1 = NULL;
+  }
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_move_to(spb, x0, y0);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__end_path(iconvg_canvas* c) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_close(spb);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__path_line_to(iconvg_canvas* c, float x1, float y1) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_line_to(spb, x1, y1);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__path_quad_to(iconvg_canvas* c,
+                                         float x1,
+                                         float y1,
+                                         float x2,
+                                         float y2) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_quad_to(spb, x1, y1, x2, y2);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__path_cube_to(iconvg_canvas* c,
+                                         float x1,
+                                         float y1,
+                                         float x2,
+                                         float y2,
+                                         float x3,
+                                         float y3) {
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_cubic_to(spb, x1, y1, x2, y2, x3, y3);
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__on_metadata_viewbox(iconvg_canvas* c,
+                                                iconvg_rectangle_f32 viewbox) {
+  return NULL;
+}
+
+static const char*  //
+iconvg_private_skia_canvas__on_metadata_suggested_palette(
+    iconvg_canvas* c,
+    const iconvg_palette* suggested_palette) {
+  return NULL;
+}
+
+static const iconvg_canvas_vtable  //
+    iconvg_private_skia_canvas_vtable = {
+        sizeof(iconvg_canvas_vtable),
+        &iconvg_private_skia_canvas__begin_decode,
+        &iconvg_private_skia_canvas__end_decode,
+        &iconvg_private_skia_canvas__begin_drawing,
+        &iconvg_private_skia_canvas__end_drawing,
+        &iconvg_private_skia_canvas__begin_path,
+        &iconvg_private_skia_canvas__end_path,
+        &iconvg_private_skia_canvas__path_line_to,
+        &iconvg_private_skia_canvas__path_quad_to,
+        &iconvg_private_skia_canvas__path_cube_to,
+        &iconvg_private_skia_canvas__on_metadata_viewbox,
+        &iconvg_private_skia_canvas__on_metadata_suggested_palette,
+};
+
+iconvg_canvas  //
+iconvg_make_skia_canvas(sk_canvas_t* sc) {
+  if (!sc) {
+    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+  }
+  iconvg_canvas c;
+  c.vtable = &iconvg_private_skia_canvas_vtable;
+  c.context_nonconst_ptr0 = sc;
+  c.context_nonconst_ptr1 = NULL;
+  c.context_const_ptr = NULL;
+  c.context_extra = 0;
+  return c;
+}
+
+#endif  // ICONVG_CONFIG__ENABLE_SKIA_BACKEND
 
 #endif  // ICONVG_IMPLEMENTATION
 
