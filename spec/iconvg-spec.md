@@ -112,7 +112,7 @@ by:
     dx = (a * px) + (b * py) + c
     dy = (d * px) + (e * py) + f
 
-The [appendix below](#appendix-gradient-transformation-matrices) gives explicit
+The [appendix below](#appendix---gradient-transformation-matrices) gives explicit
 formulae for the `[a, b, c; d, e, f]` affine transformation matrix for common
 gradient geometry, such as a linear gradient defined by two points.
 
