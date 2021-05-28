@@ -63,8 +63,8 @@ green, blue and alpha. Alpha-premultiplication means that `00:C0:00:C0`
 represents a 75%-opaque, 100% Saturation, 100% Value green (with 120° Hue).
 
 Interpolation between explicit gradient stops also uses alpha-premultiplied
-color, unlike SVG. The halfway color between opaque bright red = RGBA(1, 0, 0,
-1) and transparent black = RGBA(0, 0, 0, 0), which is RGBA(½, 0, 0, ½), is a
+color, unlike SVG. The halfway color between opaque bright red = `RGBA(1, 0, 0,
+1)` and transparent black = `RGBA(0, 0, 0, 0)`, which is `RGBA(½, 0, 0, ½)`, is a
 50% opaque bright red, not a 50% opaque dark red. The halfway point still has
 100% Saturation and 100% Value (in the HSV Hue Saturation Value sense). It just
 has smaller alpha.
