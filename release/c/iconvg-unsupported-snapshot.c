@@ -1074,8 +1074,8 @@ iconvg_make_broken_canvas(const char* err_msg) {
 
 bool  //
 iconvg_canvas__does_nothing(const iconvg_canvas* self) {
-  return self && (self->vtable != NULL) &&
-         (self->vtable != &iconvg_private_broken_canvas_vtable);
+  return !self || (self->vtable == NULL) ||
+         (self->vtable == &iconvg_private_broken_canvas_vtable);
 }
 
 // -------------------------------- #include "./cairo.c"
