@@ -1,3 +1,6 @@
+#ifndef ICONVG_PUBLIC_INCLUDE_GUARD
+#define ICONVG_PUBLIC_INCLUDE_GUARD
+
 // Copyright 2021 The IconVG Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -586,3 +589,5 @@ make_skia_canvas(SkCanvas* sc) {
 
 }  // namespace iconvg
 #endif
+
+#endif  // ICONVG_PUBLIC_INCLUDE_GUARD

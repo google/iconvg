@@ -70,8 +70,11 @@ var (
 	nl        = []byte("\n")
 	nlNL      = []byte("\n\n")
 
+	hashEndif     = []byte(`#endif `)
+	hashIfndef    = []byte(`#ifndef `)
 	hashIncludeAB = []byte(`#include <`)   // AB = Angle Bracket.
 	hashIncludeDQ = []byte(`#include "./`) // DQ = Double Quote.
+	includeGuard  = []byte(`_INCLUDE_GUARD`)
 )
 
 func cdIconVGRootDirectory() bool {
@@ -109,7 +112,8 @@ func expand(w io.Writer, line []byte) error {
 		return err
 	}
 
-	// Skip the `// Copyright etc` lines.
+	// Skip the `#ifndef ETC_INCLUDE_GUARD` and `// Copyright etc` lines.
+	src = skipIncludeGuards(src)
 	if !bytes.HasPrefix(src, copyright) {
 		return fmt.Errorf("main: %q did not start with the expected copyright header", filename)
 	} else if i := bytes.Index(src, nlNL); i < 0 {
@@ -155,4 +159,50 @@ func expand(w io.Writer, line []byte) error {
 	}
 	_, err = w.Write(src)
 	return err
+}
+
+func skipIncludeGuards(src []byte) []byte {
+	unchanged := src
+	if !bytes.HasPrefix(src, hashIfndef) {
+		return unchanged
+	}
+
+	// Remove leading `#ifndef FOO_INCLUDE_GUARD`.
+	if i := bytes.IndexByte(src, '\n'); i < 0 {
+		return unchanged
+	} else if !bytes.HasSuffix(src[:i], includeGuard) {
+		return unchanged
+	} else {
+		src = src[i+1:]
+	}
+
+	// Remove leading `#define FOO_INCLUDE_GUARD`.
+	if i := bytes.IndexByte(src, '\n'); i < 0 {
+		return unchanged
+	} else if !bytes.HasSuffix(src[:i], includeGuard) {
+		return unchanged
+	} else {
+		src = src[i+1:]
+	}
+
+	// Trim leading and trailing blank lines.
+	for (len(src) > 0) && (src[0] == '\n') {
+		src = src[1:]
+	}
+	for (len(src) > 0) && (src[len(src)-1] == '\n') {
+		src = src[:len(src)-1]
+	}
+
+	// Remove trailing `#endif  // FOO_INCLUDE_GUARD`.
+	if !bytes.HasSuffix(src, includeGuard) {
+		return unchanged
+	} else if i := bytes.LastIndexByte(src, '\n'); i < 0 {
+		return unchanged
+	} else if !bytes.HasPrefix(src[i+1:], hashEndif) {
+		return unchanged
+	} else {
+		src = src[:i]
+	}
+
+	return src
 }

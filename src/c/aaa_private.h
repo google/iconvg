@@ -1,3 +1,6 @@
+#ifndef ICONVG_PRIVATE_INCLUDE_GUARD
+#define ICONVG_PRIVATE_INCLUDE_GUARD
+
 // Copyright 2021 The IconVG Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -179,3 +182,5 @@ iconvg_private_path_arc_to(iconvg_canvas* c,
                            bool sweep,
                            float final_x,
                            float final_y);
+
+#endif  // ICONVG_PRIVATE_INCLUDE_GUARD
