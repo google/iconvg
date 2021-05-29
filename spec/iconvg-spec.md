@@ -141,7 +141,9 @@ that byte value such that `0`, `1`, `2`, `3` and `4` map to `0x00`, `0x40`,
 register (with `CREG` indexed by that byte value minus `192`).
 
 For a *2 byte encoding*, the red, green, blue and alpha values are all 4 bit
-values. For example, the color `33:88:00:FF` can be encoded as `0x38 0x0F`.
+values which are extended to 8 bits by duplicating each nibble (or equivalently,
+they are 4 bit color values interpolated to an 8 bit color space). For example,
+the color `33:88:00:FF` can be encoded as `0x38 0x0F`.
 
 For a *3 byte direct encoding*, the red, green and blue values are all 8 bit
 values. The alpha value is implicitly 255. For example, the color `30:66:07:FF`
