@@ -197,7 +197,7 @@ iconvg_private_path_arc_to(iconvg_canvas* c,
   // algorithm. What follows below is specific to this implementation.
 
   // We approximate an arc by one or more cubic Bézier curves.
-  int n = (int)(ceil(abs(delta_theta) / ((pi / 2) + 0.001)));
+  int n = (int)(ceil(fabs(delta_theta) / ((pi / 2) + 0.001)));
   double inv_n = 1.0 / ((double)n);
   for (int i = 0; i < n; i++) {
     ICONVG_PRIVATE_TRY(iconvg_private_path_arc_segment_to(
