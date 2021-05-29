@@ -64,16 +64,17 @@ represents a 75%-opaque, 100% Saturation, 100% Value green (with 120° Hue).
 
 Interpolation between explicit gradient stops also uses alpha-premultiplied
 color, unlike SVG. The halfway color between opaque bright red = `RGBA(1, 0, 0,
-1)` and transparent black = `RGBA(0, 0, 0, 0)`, which is `RGBA(½, 0, 0, ½)`, is a
-50% opaque bright red, not a 50% opaque dark red. The halfway point still has
+1)` and transparent black = `RGBA(0, 0, 0, 0)`, which is `RGBA(½, 0, 0, ½)`, is
+a 50% opaque bright red, not a 50% opaque dark red. The halfway point still has
 100% Saturation and 100% Value (in the HSV Hue Saturation Value sense). It just
 has smaller alpha.
 
-Alpha-premultiplication also means that some RGBA combinations (where e.g. the
-red value is greater than the alpha value) are nonsensical. The virtual machine
-re-purposes some of those values to represent *gradients* instead of flat
-colors. Any color register whose alpha value is `0` but whose blue value is at
-least `128` is a gradient. Its remaining bits are reinterpreted such that:
+Alpha-premultiplication also means that some `RGBA` combinations (where e.g.
+the red value is greater than the alpha value) are nonsensical. The virtual
+machine re-purposes some of those values to represent *gradients* instead of
+flat colors. Any color register whose alpha value is `0` but whose blue value
+is at least `128` is a gradient. Its remaining bits are reinterpreted such
+that:
 
 - The low 6 bits of the red value is the number of color/offset stops,
   `NSTOPS`.
@@ -91,7 +92,7 @@ least `128` is a gradient. Its remaining bits are reinterpreted such that:
     end-to-start, start-to-end, etc.
   - *Repeat* means that the offset mapping is repeated start-to-end,
     start-to-end, start-to-end, etc.
-- The low 6 bits of the blue value is the number register base, NBASE.
+- The low 6 bits of the blue value is the number register base, `NBASE`.
 - The remaining bit (the `0x40` bit) of the blue value denotes the gradient
   shape: `0` means a *linear gradient* and `1` means a *radial gradient*.
 
@@ -112,9 +113,9 @@ by:
     dx = (a * px) + (b * py) + c
     dy = (d * px) + (e * py) + f
 
-The [appendix below](#appendix---gradient-transformation-matrices) gives explicit
-formulae for the `[a, b, c; d, e, f]` affine transformation matrix for common
-gradient geometry, such as a linear gradient defined by two points.
+The [appendix below](#appendix---gradient-transformation-matrices) gives
+explicit formulae for the `[a, b, c; d, e, f]` affine transformation matrix for
+common gradient geometry, such as a linear gradient defined by two points.
 
 At the time a gradient is used to fill a path, it is invalid for any of the
 stop colors to itself be a gradient, or for any stop offset to be less than or
@@ -129,7 +130,7 @@ byte stream can be encoded more compactly, and are encoded in either 1, 2, 3 or
 byte color, others by a 2 byte color. There are two forms of 3 byte colors:
 direct and indirect.
 
-For a *1 byte encoding*, byte values in the range `[0, 125)` encode the RGBA
+For a *1 byte encoding*, byte values in the range `[0, 125)` encode the `RGBA`
 color where the red, green and blue values come from the base-5 encoding of
 that byte value such that `0`, `1`, `2`, `3` and `4` map to `0x00`, `0x40`,
 `0x80`, `0xC0` and `0xFF`. The alpha value is `0xFF`. For example, the color
@@ -141,9 +142,9 @@ that byte value such that `0`, `1`, `2`, `3` and `4` map to `0x00`, `0x40`,
 register (with `CREG` indexed by that byte value minus `192`).
 
 For a *2 byte encoding*, the red, green, blue and alpha values are all 4 bit
-values which are extended to 8 bits by duplicating each nibble (or equivalently,
-they are 4 bit color values interpolated to an 8 bit color space). For example,
-the color `33:88:00:FF` can be encoded as `0x38 0x0F`.
+values which are extended to 8 bits by duplicating each nibble (or
+equivalently, they are 4 bit color values interpolated to an 8 bit color
+space). For example, the color `33:88:00:FF` can be encoded as `0x38 0x0F`.
 
 For a *3 byte direct encoding*, the red, green and blue values are all 8 bit
 values. The alpha value is implicitly 255. For example, the color `30:66:07:FF`
