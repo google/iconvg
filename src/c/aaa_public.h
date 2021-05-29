@@ -120,7 +120,7 @@ typedef struct iconvg_optional_i64_struct {
   bool has_value;
 } iconvg_optional_i64;
 
-iconvg_optional_i64  //
+static inline iconvg_optional_i64  //
 iconvg_make_optional_i64_none() {
   iconvg_optional_i64 o;
   o.value = 0;
@@ -128,7 +128,7 @@ iconvg_make_optional_i64_none() {
   return o;
 }
 
-iconvg_optional_i64  //
+static inline iconvg_optional_i64  //
 iconvg_make_optional_i64_some(int64_t value) {
   iconvg_optional_i64 o;
   o.value = value;
