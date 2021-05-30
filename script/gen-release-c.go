@@ -256,9 +256,8 @@ func buildPublicAPIIndex(src []byte) ([]byte, error) {
 	typedefIsEnum := false
 
 	ns := ""
-	for line, remaining := []byte(nil), src; len(remaining) > 0; {
-		prev := line
-		line = remaining
+	for remaining := src; len(remaining) > 0; {
+		line := remaining
 		remaining = nil
 		if i := bytes.IndexByte(line, '\n'); i >= 0 {
 			line, remaining = line[:i+1], line[i+1:]
@@ -301,10 +300,8 @@ func buildPublicAPIIndex(src []byte) ([]byte, error) {
 
 		if funkName := looksLikePublicAPIFunction(line); funkName != "" {
 			funkName = ns + funkName
-			if strings.Contains(funkName, "__make_") ||
-				strings.HasSuffix(funkName, "__make") ||
-				strings.Contains(funkName, "::make") {
-				typName := findReturnType(prev)
+			if i := strings.Index(funkName, "__make"); i >= 0 {
+				typName := strings.Replace(funkName[:i], "::", "_", -1)
 				ctorMap[typName] = append(ctorMap[typName], funkName)
 				continue
 			} else if i := strings.Index(funkName, "__"); i >= 0 {
@@ -426,15 +423,6 @@ func buildPublicAPIIndex(src []byte) ([]byte, error) {
 	}
 	b.WriteString("\n")
 	return b.Bytes(), nil
-}
-
-func findReturnType(src []byte) string {
-	if i := bytes.Index(src, slashSlash); i >= 0 {
-		src = src[:i]
-	}
-	src = bytes.TrimSpace(src)
-	i := 1 + bytes.LastIndexByte(src, ' ')
-	return string(src[i:])
 }
 
 func looksLikePublicAPIFunction(src []byte) (name string) {
