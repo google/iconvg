@@ -259,6 +259,12 @@ iconvg_matrix_2x3_f64__determinant(  // ¶0.1
 // ----
 
 // iconvg_decode_options holds the optional arguments to iconvg_decode.
+//
+// Example code:
+//   iconvg_decode_options opts = {0};
+//   opts.sizeof__iconvg_decode_options = sizeof(iconvg_decode_options);
+//   opts.palette = palette;
+//   return iconvg_decode(etc, &opts);
 typedef struct iconvg_decode_options_struct {
   // sizeof__iconvg_decode_options should be set to the sizeof this data
   // structure. An explicit value allows different library versions to work
@@ -281,17 +287,6 @@ typedef struct iconvg_decode_options_struct {
 
   // The fields above are ¶0.1
 } iconvg_decode_options;  // ¶0.1
-
-// iconvg_decode_options__make_ffv1 returns an iconvg_decode_options suitable
-// for FFV (file format version) 1.
-static inline iconvg_decode_options  //
-iconvg_decode_options__make_ffv1(    // ¶0.1
-    iconvg_palette* palette) {
-  iconvg_decode_options o = {0};
-  o.sizeof__iconvg_decode_options = sizeof(iconvg_decode_options);
-  o.palette = palette;
-  return o;
-}
 
 // ----
 
