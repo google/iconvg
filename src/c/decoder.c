@@ -289,7 +289,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c_arg,
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
 
-  iconvg_canvas no_op_canvas = iconvg_make_broken_canvas(NULL);
+  iconvg_canvas no_op_canvas = iconvg_canvas__make_broken(NULL);
   iconvg_canvas* c = &no_op_canvas;
 
   // Drawing ops will typically set curr_x and curr_y. They also set x1 and y1
@@ -1044,7 +1044,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options) {
-  iconvg_canvas fallback_canvas = iconvg_make_broken_canvas(NULL);
+  iconvg_canvas fallback_canvas = iconvg_canvas__make_broken(NULL);
   if (!dst_canvas || !dst_canvas->vtable) {
     dst_canvas = &fallback_canvas;
   }

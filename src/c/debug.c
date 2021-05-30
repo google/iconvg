@@ -294,9 +294,9 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_debug_canvas(FILE* f,
-                         const char* message_prefix,
-                         iconvg_canvas* wrapped) {
+iconvg_canvas__make_debug(FILE* f,
+                          const char* message_prefix,
+                          iconvg_canvas* wrapped) {
   if (wrapped && !wrapped->vtable) {
     wrapped = NULL;
   }

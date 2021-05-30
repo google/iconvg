@@ -107,7 +107,7 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_broken_canvas(const char* err_msg) {
+iconvg_canvas__make_broken(const char* err_msg) {
   iconvg_canvas c;
   c.vtable = &iconvg_private_broken_canvas_vtable;
   c.context_nonconst_ptr0 = NULL;

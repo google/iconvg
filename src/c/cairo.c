@@ -17,8 +17,8 @@
 #if !defined(ICONVG_CONFIG__ENABLE_CAIRO_BACKEND)
 
 iconvg_canvas  //
-iconvg_make_cairo_canvas(cairo_t* cr) {
-  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+iconvg_canvas__make_cairo(cairo_t* cr) {
+  return iconvg_canvas__make_broken(iconvg_error_invalid_backend_not_enabled);
 }
 
 #else  // ICONVG_CONFIG__ENABLE_CAIRO_BACKEND
@@ -325,9 +325,10 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_cairo_canvas(cairo_t* cr) {
+iconvg_canvas__make_cairo(cairo_t* cr) {
   if (!cr) {
-    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+    return iconvg_canvas__make_broken(
+        iconvg_error_invalid_constructor_argument);
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_cairo_canvas_vtable;

@@ -74,7 +74,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   cairo_t* cr = cairo_create(cs);
 
   *pb = ((pixel_buffer){0});
-  pb->canvas = iconvg_make_cairo_canvas(cr);
+  pb->canvas = iconvg_canvas__make_cairo(cr);
   pb->extra0 = cs;
   pb->extra1 = cr;
   return NULL;
@@ -154,7 +154,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   pb->data = data;
   pb->width = width;
   pb->height = height;
-  pb->canvas = iconvg_make_skia_canvas(sc);
+  pb->canvas = iconvg_canvas__make_skia(sc);
   pb->extra0 = ss;
   return NULL;
 }
@@ -191,7 +191,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
     return "main: NULL pixel_buffer";
   }
   *pb = ((pixel_buffer){0});
-  pb->canvas = iconvg_make_broken_canvas("main: no IconVG backend configured");
+  pb->canvas = iconvg_canvas__make_broken("main: no IconVG backend configured");
   return NULL;
 }
 
@@ -388,14 +388,14 @@ main(int argc, char** argv) {
   // Decode the IconVG.
   {
     iconvg_canvas* c = &pb.canvas;
-    iconvg_canvas debug_canvas = iconvg_make_debug_canvas(
+    iconvg_canvas debug_canvas = iconvg_canvas__make_debug(
         stderr,
         "debug: ", iconvg_canvas__does_nothing(&pb.canvas) ? NULL : &pb.canvas);
     if (true) {  // TODO: parse a -debug command line arg.
       c = &debug_canvas;
     }
     const char* err_msg = iconvg_decode(
-        c, iconvg_make_rectangle_f32(0, 0, pixel_width, pixel_height), src_ptr,
+        c, iconvg_rectangle_f32__make(0, 0, pixel_width, pixel_height), src_ptr,
         src_len, NULL);
     if (err_msg) {
       fprintf(stderr, "main: could not decode %s\n%s\n", input_filename,

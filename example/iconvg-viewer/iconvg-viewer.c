@@ -121,7 +121,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   }
 
   *pb = ((pixel_buffer){0});
-  pb->canvas = iconvg_make_cairo_canvas(cr);
+  pb->canvas = iconvg_canvas__make_cairo(cr);
   pb->extra0 = cs;
   pb->extra1 = cr;
   return NULL;
@@ -229,7 +229,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
   pb->data = data;
   pb->width = width;
   pb->height = height;
-  pb->canvas = iconvg_make_skia_canvas(sc);
+  pb->canvas = iconvg_canvas__make_skia(sc);
   pb->extra0 = ss;
   return NULL;
 }
@@ -266,7 +266,7 @@ initialize_pixel_buffer(pixel_buffer* pb, uint32_t width, uint32_t height) {
     return "main: NULL pixel_buffer";
   }
   *pb = ((pixel_buffer){0});
-  pb->canvas = iconvg_make_broken_canvas("main: no IconVG backend configured");
+  pb->canvas = iconvg_canvas__make_broken("main: no IconVG backend configured");
   return NULL;
 }
 
@@ -398,10 +398,10 @@ render(void* ctx,
 
     int32_t min_x = (window_width - dr_width) / 2;
     int32_t min_y = (window_height - dr_height) / 2;
-    dst_rect = iconvg_make_rectangle_f32(min_x,               //
-                                         min_y,               //
-                                         min_x + dr_width,    //
-                                         min_y + dr_height);  //
+    dst_rect = iconvg_rectangle_f32__make(min_x,               //
+                                          min_y,               //
+                                          min_x + dr_width,    //
+                                          min_y + dr_height);  //
   }
 
   // Initialize the pixel buffer.

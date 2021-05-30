@@ -127,7 +127,7 @@ iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
 iconvg_matrix_2x3_f64  //
 iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   if (!self) {
-    return iconvg_make_matrix_2x3_f64(1, 0, 0, 0, 1, 0);
+    return iconvg_matrix_2x3_f64__make(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
   uint32_t nbase = self->paint_rgba[2];
@@ -165,5 +165,5 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   double d11 = s11 * self->d2s_scale_y;
   double d12 = (s10 * self->d2s_bias_x) + (s11 * self->d2s_bias_y) + s12;
 
-  return iconvg_make_matrix_2x3_f64(d00, d01, d02, d10, d11, d12);
+  return iconvg_matrix_2x3_f64__make(d00, d01, d02, d10, d11, d12);
 }

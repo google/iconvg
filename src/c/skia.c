@@ -17,8 +17,8 @@
 #if !defined(ICONVG_CONFIG__ENABLE_SKIA_BACKEND)
 
 iconvg_canvas  //
-iconvg_make_skia_canvas(sk_canvas_t* sc) {
-  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+iconvg_canvas__make_skia(sk_canvas_t* sc) {
+  return iconvg_canvas__make_broken(iconvg_error_invalid_backend_not_enabled);
 }
 
 #else  // ICONVG_CONFIG__ENABLE_SKIA_BACKEND
@@ -382,9 +382,10 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_skia_canvas(sk_canvas_t* sc) {
+iconvg_canvas__make_skia(sk_canvas_t* sc) {
   if (!sc) {
-    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+    return iconvg_canvas__make_broken(
+        iconvg_error_invalid_constructor_argument);
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_skia_canvas_vtable;

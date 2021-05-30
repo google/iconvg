@@ -18,7 +18,7 @@ iconvg_matrix_2x3_f64  //
 iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self) {
   double inv = 1.0 / iconvg_matrix_2x3_f64__determinant(self);
   if (isinf(inv) || isnan(inv)) {
-    return iconvg_make_matrix_2x3_f64(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    return iconvg_matrix_2x3_f64__make(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
   // https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
@@ -27,12 +27,12 @@ iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self) {
                (self->elems[0][2] * self->elems[1][1]);
   double e12 = (self->elems[0][0] * self->elems[1][2]) -
                (self->elems[0][2] * self->elems[1][0]);
-  return iconvg_make_matrix_2x3_f64(+inv * self->elems[1][1],  //
-                                    -inv * self->elems[0][1],  //
-                                    +inv * e02,                //
-                                    -inv * self->elems[1][0],  //
-                                    +inv * self->elems[0][0],  //
-                                    -inv * e12);               //
+  return iconvg_matrix_2x3_f64__make(+inv * self->elems[1][1],  //
+                                     -inv * self->elems[0][1],  //
+                                     +inv * e02,                //
+                                     -inv * self->elems[1][0],  //
+                                     +inv * self->elems[0][0],  //
+                                     -inv * e12);               //
 }
 
 void  //

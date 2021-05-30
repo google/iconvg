@@ -301,7 +301,9 @@ func buildPublicAPIIndex(src []byte) ([]byte, error) {
 
 		if funkName := looksLikePublicAPIFunction(line); funkName != "" {
 			funkName = ns + funkName
-			if strings.Contains(funkName, "_make_") || strings.Contains(funkName, "::make") {
+			if strings.Contains(funkName, "__make_") ||
+				strings.HasSuffix(funkName, "__make") ||
+				strings.Contains(funkName, "::make") {
 				typName := findReturnType(prev)
 				ctorMap[typName] = append(ctorMap[typName], funkName)
 				continue

@@ -74,24 +74,24 @@
 //
 // Data structures (-), their constructors (*) and their methods (+):
 //   - iconvg_canvas
-//           * iconvg::make_skia_canvas
-//           * iconvg_make_broken_canvas
-//           * iconvg_make_cairo_canvas
-//           * iconvg_make_debug_canvas
-//           * iconvg_make_skia_canvas
+//           * iconvg::canvas__make_skia
+//           * iconvg_canvas__make_broken
+//           * iconvg_canvas__make_cairo
+//           * iconvg_canvas__make_debug
+//           * iconvg_canvas__make_skia
 //       + iconvg_canvas__does_nothing
 //   - iconvg_canvas_vtable
 //   - iconvg_decode_options
-//           * iconvg_make_decode_options_ffv1
+//           * iconvg_decode_options__make_ffv1
 //   - iconvg_matrix_2x3_f64
-//           * iconvg_make_matrix_2x3_f64
+//           * iconvg_matrix_2x3_f64__make
 //       + iconvg_matrix_2x3_f64__determinant
 //       + iconvg_matrix_2x3_f64__inverse
 //       + iconvg_matrix_2x3_f64__override_second_row
 //   - iconvg_nonpremul_color
 //   - iconvg_optional_i64
-//           * iconvg_make_optional_i64_none
-//           * iconvg_make_optional_i64_some
+//           * iconvg_optional_i64__make_none
+//           * iconvg_optional_i64__make_some
 //   - iconvg_paint
 //       + iconvg_paint__flat_color_as_nonpremul_color
 //       + iconvg_paint__flat_color_as_premul_color
@@ -105,7 +105,7 @@
 //   - iconvg_palette
 //   - iconvg_premul_color
 //   - iconvg_rectangle_f32
-//           * iconvg_make_rectangle_f32
+//           * iconvg_rectangle_f32__make
 //       + iconvg_rectangle_f32__height_f64
 //       + iconvg_rectangle_f32__is_finite_and_not_empty
 //       + iconvg_rectangle_f32__width_f64
@@ -146,6 +146,12 @@
 // that the annotated function, type, etc is part of the public API. The
 // pilcrow is followed by the library version (e.g. ¶0.2 or ¶1.0.56) that the
 // annotated item has debuted in or will debut in.
+//
+// Some structs may grow in size across releases (and passed by pointer),
+// provided that the first field holds the sizeof that struct and that new
+// versions only add fields, never remove or otherwise change existing fields.
+// "The fields above are ¶etc" pilcrow comments within such structs annotate
+// which fields were added in which versions.
 
 // ----
 
@@ -196,9 +202,9 @@ typedef struct iconvg_rectangle_f32_struct {
   float max_y;
 } iconvg_rectangle_f32;  // ¶0.1
 
-// iconvg_make_rectangle_f32 is an iconvg_rectangle_f32 constructor.
+// iconvg_rectangle_f32__make is an iconvg_rectangle_f32 constructor.
 static inline iconvg_rectangle_f32  //
-iconvg_make_rectangle_f32(          // ¶0.1
+iconvg_rectangle_f32__make(         // ¶0.1
     float min_x,
     float min_y,
     float max_x,
@@ -220,7 +226,7 @@ typedef struct iconvg_optional_i64_struct {
 } iconvg_optional_i64;  // ¶0.1
 
 static inline iconvg_optional_i64  //
-iconvg_make_optional_i64_none(     // ¶0.1
+iconvg_optional_i64__make_none(    // ¶0.1
 ) {
   iconvg_optional_i64 o;
   o.value = 0;
@@ -229,7 +235,7 @@ iconvg_make_optional_i64_none(     // ¶0.1
 }
 
 static inline iconvg_optional_i64  //
-iconvg_make_optional_i64_some(     // ¶0.1
+iconvg_optional_i64__make_some(    // ¶0.1
     int64_t value) {
   iconvg_optional_i64 o;
   o.value = value;
@@ -304,9 +310,9 @@ typedef struct iconvg_matrix_2x3_f64_struct {
   double elems[2][3];
 } iconvg_matrix_2x3_f64;  // ¶0.1
 
-// iconvg_make_matrix_2x3_f64 is an iconvg_matrix_2x3_f64 constructor.
+// iconvg_matrix_2x3_f64__make is an iconvg_matrix_2x3_f64 constructor.
 static inline iconvg_matrix_2x3_f64  //
-iconvg_make_matrix_2x3_f64(          // ¶0.1
+iconvg_matrix_2x3_f64__make(         // ¶0.1
     double elems00,
     double elems01,
     double elems02,
@@ -360,10 +366,10 @@ typedef struct iconvg_decode_options_struct {
   // The fields above are ¶0.1
 } iconvg_decode_options;  // ¶0.1
 
-// iconvg_make_decode_options_ffv1 returns an iconvg_decode_options suitable
+// iconvg_decode_options__make_ffv1 returns an iconvg_decode_options suitable
 // for FFV (file format version) 1.
 static inline iconvg_decode_options  //
-iconvg_make_decode_options_ffv1(     // ¶0.1
+iconvg_decode_options__make_ffv1(    // ¶0.1
     iconvg_palette* palette) {
   iconvg_decode_options o = {0};
   o.sizeof__iconvg_decode_options = sizeof(iconvg_decode_options);
@@ -381,7 +387,7 @@ iconvg_make_decode_options_ffv1(     // ¶0.1
 // instead of by the language. This library is implemented in C, not C++.
 //
 // Most users won't need to know about the details of the iconvg_canvas and
-// iconvg_canvas_vtable types. Only that iconvg_make_etc_canvas creates a
+// iconvg_canvas_vtable types. Only that iconvg_canvas__make_etc creates a
 // canvas and the iconvg_canvas__etc methods take a canvas as an argument.
 
 struct iconvg_canvas_struct;
@@ -429,7 +435,7 @@ typedef struct iconvg_canvas_struct {
 
   // context_etc semantics depend on the 'sub-class' and should be considered
   // private implementation details. For built-in 'sub-classes', as returned by
-  // the library's iconvg_make_etc_canvas functions, users should not read or
+  // the library's iconvg_canvas__make_etc functions, users should not read or
   // write these fields directly and their semantics may change between minor
   // library releases.
   void* context_nonconst_ptr0;
@@ -452,7 +458,7 @@ iconvg_error_is_file_format_error(  // ¶0.1
 
 // ----
 
-// iconvg_make_broken_canvas returns an iconvg_canvas whose callbacks all do
+// iconvg_canvas__make_broken returns an iconvg_canvas whose callbacks all do
 // nothing other than return err_msg.
 //
 // If err_msg is NULL then all canvas methods are no-op successes (returning a
@@ -460,11 +466,11 @@ iconvg_error_is_file_format_error(  // ¶0.1
 //
 // If err_msg is non-NULL then all canvas methods are no-op failures (returning
 // the err_msg argument).
-iconvg_canvas               //
-iconvg_make_broken_canvas(  // ¶0.1
+iconvg_canvas                //
+iconvg_canvas__make_broken(  // ¶0.1
     const char* err_msg);
 
-// iconvg_make_debug_canvas returns an iconvg_canvas that logs vtable calls to
+// iconvg_canvas__make_debug returns an iconvg_canvas that logs vtable calls to
 // f before forwarding the call on to the wrapped iconvg_canvas. Log messages
 // are prefixed by message_prefix.
 //
@@ -479,8 +485,8 @@ iconvg_make_broken_canvas(  // ¶0.1
 // If any of the pointer-typed arguments are non-NULL then the caller of this
 // function is responsible for ensuring that the pointers remain valid while
 // the returned iconvg_canvas is in use.
-iconvg_canvas              //
-iconvg_make_debug_canvas(  // ¶0.1
+iconvg_canvas               //
+iconvg_canvas__make_debug(  // ¶0.1
     FILE* f,
     const char* message_prefix,
     iconvg_canvas* wrapped);
@@ -488,16 +494,16 @@ iconvg_make_debug_canvas(  // ¶0.1
 // iconvg_canvas__does_nothing returns whether self is NULL or *self is
 // zero-valued or broken. Other canvas values are presumed to do something.
 // Zero-valued means the result of "iconvg_canvas c = {0}". Broken means the
-// result of "iconvg_canvas c = iconvg_make_broken_canvas(err_msg)".
+// result of "iconvg_canvas c = iconvg_canvas__make_broken(err_msg)".
 //
 // Note that do-nothing canvases are still usable. You can pass them to
-// functions like iconvg_decode and iconvg_make_debug_canvas.
+// functions like iconvg_decode and iconvg_canvas__make_debug.
 //
 // A NULL or zero-valued canvas means that all canvas methods are no-op
 // successes (returning a NULL error message).
 //
 // A broken canvas means that all canvas methods are no-op successes or
-// failures (depending on the NULL-ness of the iconvg_make_broken_canvas
+// failures (depending on the NULL-ness of the iconvg_canvas__make_broken
 // err_msg argument).
 bool                          //
 iconvg_canvas__does_nothing(  // ¶0.1
@@ -507,7 +513,7 @@ iconvg_canvas__does_nothing(  // ¶0.1
 
 typedef struct _cairo cairo_t;
 
-// iconvg_make_cairo_canvas returns an iconvg_canvas that is backed by the
+// iconvg_canvas__make_cairo returns an iconvg_canvas that is backed by the
 // Cairo graphics library, if the ICONVG_CONFIG__ENABLE_CAIRO_BACKEND macro
 // was defined when the IconVG library was built.
 //
@@ -516,15 +522,15 @@ typedef struct _cairo cairo_t;
 //
 // If cr is NULL then the returned value will be broken (with
 // iconvg_error_invalid_constructor_argument).
-iconvg_canvas              //
-iconvg_make_cairo_canvas(  // ¶0.1
+iconvg_canvas               //
+iconvg_canvas__make_cairo(  // ¶0.1
     cairo_t* cr);
 
 // ----
 
 typedef struct sk_canvas_t sk_canvas_t;
 
-// iconvg_make_skia_canvas returns an iconvg_canvas that is backed by the Skia
+// iconvg_canvas__make_skia returns an iconvg_canvas that is backed by the Skia
 // graphics library, if the ICONVG_CONFIG__ENABLE_SKIA_BACKEND macro was
 // defined when the IconVG library was built.
 //
@@ -533,8 +539,8 @@ typedef struct sk_canvas_t sk_canvas_t;
 //
 // If sc is NULL then the returned value will be broken (with
 // iconvg_error_invalid_constructor_argument).
-iconvg_canvas             //
-iconvg_make_skia_canvas(  // ¶0.1
+iconvg_canvas              //
+iconvg_canvas__make_skia(  // ¶0.1
     sk_canvas_t* sc);
 
 // ----
@@ -709,13 +715,13 @@ class SkCanvas;
 
 namespace iconvg {
 
-// iconvg::make_skia_canvas is equivalent to iconvg_make_skia_canvas except
+// iconvg::canvas__make_skia is equivalent to iconvg_canvas__make_skia except
 // that it takes a SkCanvas* argument (part of Skia's C++ API) instead of a
 // sk_canvas_t* argument (part of Skia's C API).
 static inline iconvg_canvas  //
-make_skia_canvas(            // ¶0.1
+canvas__make_skia(           // ¶0.1
     SkCanvas* sc) {
-  return iconvg_make_skia_canvas(reinterpret_cast<sk_canvas_t*>(sc));
+  return iconvg_canvas__make_skia(reinterpret_cast<sk_canvas_t*>(sc));
 }
 
 }  // namespace iconvg
@@ -1182,7 +1188,7 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_broken_canvas(const char* err_msg) {
+iconvg_canvas__make_broken(const char* err_msg) {
   iconvg_canvas c;
   c.vtable = &iconvg_private_broken_canvas_vtable;
   c.context_nonconst_ptr0 = NULL;
@@ -1203,8 +1209,8 @@ iconvg_canvas__does_nothing(const iconvg_canvas* self) {
 #if !defined(ICONVG_CONFIG__ENABLE_CAIRO_BACKEND)
 
 iconvg_canvas  //
-iconvg_make_cairo_canvas(cairo_t* cr) {
-  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+iconvg_canvas__make_cairo(cairo_t* cr) {
+  return iconvg_canvas__make_broken(iconvg_error_invalid_backend_not_enabled);
 }
 
 #else  // ICONVG_CONFIG__ENABLE_CAIRO_BACKEND
@@ -1511,9 +1517,10 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_cairo_canvas(cairo_t* cr) {
+iconvg_canvas__make_cairo(cairo_t* cr) {
   if (!cr) {
-    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+    return iconvg_canvas__make_broken(
+        iconvg_error_invalid_constructor_argument);
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_cairo_canvas_vtable;
@@ -2008,9 +2015,9 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_debug_canvas(FILE* f,
-                         const char* message_prefix,
-                         iconvg_canvas* wrapped) {
+iconvg_canvas__make_debug(FILE* f,
+                          const char* message_prefix,
+                          iconvg_canvas* wrapped) {
   if (wrapped && !wrapped->vtable) {
     wrapped = NULL;
   }
@@ -2300,7 +2307,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c_arg,
   // adjustments are the ADJ values from the IconVG spec.
   static const uint32_t adjustments[8] = {0, 1, 2, 3, 4, 5, 6, 0};
 
-  iconvg_canvas no_op_canvas = iconvg_make_broken_canvas(NULL);
+  iconvg_canvas no_op_canvas = iconvg_canvas__make_broken(NULL);
   iconvg_canvas* c = &no_op_canvas;
 
   // Drawing ops will typically set curr_x and curr_y. They also set x1 and y1
@@ -3055,7 +3062,7 @@ iconvg_decode(iconvg_canvas* dst_canvas,
               const uint8_t* src_ptr,
               size_t src_len,
               const iconvg_decode_options* options) {
-  iconvg_canvas fallback_canvas = iconvg_make_broken_canvas(NULL);
+  iconvg_canvas fallback_canvas = iconvg_canvas__make_broken(NULL);
   if (!dst_canvas || !dst_canvas->vtable) {
     dst_canvas = &fallback_canvas;
   }
@@ -3144,7 +3151,7 @@ iconvg_matrix_2x3_f64  //
 iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self) {
   double inv = 1.0 / iconvg_matrix_2x3_f64__determinant(self);
   if (isinf(inv) || isnan(inv)) {
-    return iconvg_make_matrix_2x3_f64(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    return iconvg_matrix_2x3_f64__make(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
   // https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
@@ -3153,12 +3160,12 @@ iconvg_matrix_2x3_f64__inverse(iconvg_matrix_2x3_f64* self) {
                (self->elems[0][2] * self->elems[1][1]);
   double e12 = (self->elems[0][0] * self->elems[1][2]) -
                (self->elems[0][2] * self->elems[1][0]);
-  return iconvg_make_matrix_2x3_f64(+inv * self->elems[1][1],  //
-                                    -inv * self->elems[0][1],  //
-                                    +inv * e02,                //
-                                    -inv * self->elems[1][0],  //
-                                    +inv * self->elems[0][0],  //
-                                    -inv * e12);               //
+  return iconvg_matrix_2x3_f64__make(+inv * self->elems[1][1],  //
+                                     -inv * self->elems[0][1],  //
+                                     +inv * e02,                //
+                                     -inv * self->elems[1][0],  //
+                                     +inv * self->elems[0][0],  //
+                                     -inv * e12);               //
 }
 
 void  //
@@ -3297,7 +3304,7 @@ iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
 iconvg_matrix_2x3_f64  //
 iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   if (!self) {
-    return iconvg_make_matrix_2x3_f64(1, 0, 0, 0, 1, 0);
+    return iconvg_matrix_2x3_f64__make(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
   uint32_t nbase = self->paint_rgba[2];
@@ -3335,7 +3342,7 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
   double d11 = s11 * self->d2s_scale_y;
   double d12 = (s10 * self->d2s_bias_x) + (s11 * self->d2s_bias_y) + s12;
 
-  return iconvg_make_matrix_2x3_f64(d00, d01, d02, d10, d11, d12);
+  return iconvg_matrix_2x3_f64__make(d00, d01, d02, d10, d11, d12);
 }
 
 // -------------------------------- #include "./rectangle.c"
@@ -3376,8 +3383,8 @@ iconvg_rectangle_f32__height_f64(const iconvg_rectangle_f32* self) {
 #if !defined(ICONVG_CONFIG__ENABLE_SKIA_BACKEND)
 
 iconvg_canvas  //
-iconvg_make_skia_canvas(sk_canvas_t* sc) {
-  return iconvg_make_broken_canvas(iconvg_error_invalid_backend_not_enabled);
+iconvg_canvas__make_skia(sk_canvas_t* sc) {
+  return iconvg_canvas__make_broken(iconvg_error_invalid_backend_not_enabled);
 }
 
 #else  // ICONVG_CONFIG__ENABLE_SKIA_BACKEND
@@ -3741,9 +3748,10 @@ static const iconvg_canvas_vtable  //
 };
 
 iconvg_canvas  //
-iconvg_make_skia_canvas(sk_canvas_t* sc) {
+iconvg_canvas__make_skia(sk_canvas_t* sc) {
   if (!sc) {
-    return iconvg_make_broken_canvas(iconvg_error_invalid_constructor_argument);
+    return iconvg_canvas__make_broken(
+        iconvg_error_invalid_constructor_argument);
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_skia_canvas_vtable;
