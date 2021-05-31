@@ -218,7 +218,7 @@ value `0x20D6` or, in decimal, `8406`.
 
 For a *4 byte encoding*, the remaining 30 bits, interpreted as little endian,
 form an integer in the range `[0, 1<<30)`. For example, `0x07 0x00 0x80 0x3F`
-encodes the value `0xFE00001` or, in decimal, `266338305`.
+encodes the value `0xFE0_0001` or, in decimal, `266_338305`.
 
 
 ### Real Numbers
