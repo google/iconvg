@@ -148,7 +148,7 @@ iconvg_private_cairo_set_gradient_stops(cairo_pattern_t* cp,
 static const char*  //
 iconvg_private_cairo_canvas__begin_decode(iconvg_canvas* c,
                                           iconvg_rectangle_f32 dst_rect) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_save(cr);
   cairo_rectangle(cr, dst_rect.min_x, dst_rect.min_y,
                   iconvg_rectangle_f32__width_f64(&dst_rect),
@@ -162,14 +162,14 @@ iconvg_private_cairo_canvas__end_decode(iconvg_canvas* c,
                                         const char* err_msg,
                                         size_t num_bytes_consumed,
                                         size_t num_bytes_remaining) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_restore(cr);
   return err_msg;
 }
 
 static const char*  //
 iconvg_private_cairo_canvas__begin_drawing(iconvg_canvas* c) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_new_path(cr);
   return NULL;
 }
@@ -177,7 +177,7 @@ iconvg_private_cairo_canvas__begin_drawing(iconvg_canvas* c) {
 static const char*  //
 iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_pattern_t* cp = NULL;
   cairo_matrix_t cm = {0};
 
@@ -231,14 +231,14 @@ iconvg_private_cairo_canvas__end_drawing(iconvg_canvas* c,
 
 static const char*  //
 iconvg_private_cairo_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_move_to(cr, x0, y0);
   return NULL;
 }
 
 static const char*  //
 iconvg_private_cairo_canvas__end_path(iconvg_canvas* c) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_close_path(cr);
   return NULL;
 }
@@ -247,7 +247,7 @@ static const char*  //
 iconvg_private_cairo_canvas__path_line_to(iconvg_canvas* c,
                                           float x1,
                                           float y1) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_line_to(cr, x1, y1);
   return NULL;
 }
@@ -258,7 +258,7 @@ iconvg_private_cairo_canvas__path_quad_to(iconvg_canvas* c,
                                           float y1,
                                           float x2,
                                           float y2) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   // Cairo doesn't have explicit support for quadratic Bézier curves, only
   // linear and cubic ones. However, a "Bézier curve of degree n can be
   // converted into a Bézier curve of degree n + 1 with the same shape", per
@@ -290,7 +290,7 @@ iconvg_private_cairo_canvas__path_cube_to(iconvg_canvas* c,
                                           float y2,
                                           float x3,
                                           float y3) {
-  cairo_t* cr = (cairo_t*)(c->context_nonconst_ptr0);
+  cairo_t* cr = (cairo_t*)(c->context.nonconst_ptr1);
   cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
   return NULL;
 }
@@ -332,10 +332,8 @@ iconvg_canvas__make_cairo(cairo_t* cr) {
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_cairo_canvas_vtable;
-  c.context_nonconst_ptr0 = cr;
-  c.context_nonconst_ptr1 = NULL;
-  c.context_const_ptr = NULL;
-  c.context_extra = 0;
+  memset(&c.context, 0, sizeof(c.context));
+  c.context.nonconst_ptr1 = cr;
   return c;
 }
 

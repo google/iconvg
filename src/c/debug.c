@@ -17,13 +17,13 @@
 static const char*  //
 iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c,
                                           iconvg_rectangle_f32 dst_rect) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     fprintf(f, "%sbegin_decode({%g, %g, %g, %g})\n",
-            ((const char*)(c->context_const_ptr)), dst_rect.min_x,
+            ((const char*)(c->context.const_ptr3)), dst_rect.min_x,
             dst_rect.min_y, dst_rect.max_x, dst_rect.max_y);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -38,15 +38,15 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
                                         const char* err_msg,
                                         size_t num_bytes_consumed,
                                         size_t num_bytes_remaining) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     const char* quote = err_msg ? "\"" : "";
     fprintf(f, "%send_decode(%s%s%s, %zu, %zu)\n",
-            ((const char*)(c->context_const_ptr)), quote,
+            ((const char*)(c->context.const_ptr3)), quote,
             err_msg ? err_msg : "NULL", quote, num_bytes_consumed,
             num_bytes_remaining);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return err_msg;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -59,11 +59,11 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
 
 static const char*  //
 iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
-    fprintf(f, "%sbegin_drawing()\n", ((const char*)(c->context_const_ptr)));
+    fprintf(f, "%sbegin_drawing()\n", ((const char*)(c->context.const_ptr3)));
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -78,13 +78,13 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
                                          const iconvg_paint* p) {
   static const char* spread_names[4] = {"none", "pad", "reflect", "repeat"};
 
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     switch (iconvg_paint__type(p)) {
       case ICONVG_PAINT_TYPE__FLAT_COLOR: {
         iconvg_premul_color k = iconvg_paint__flat_color_as_premul_color(p);
         fprintf(f, "%send_drawing(flat_color{%02X:%02X:%02X:%02X})\n",
-                ((const char*)(c->context_const_ptr)), ((int)(k.rgba[0])),
+                ((const char*)(c->context.const_ptr3)), ((int)(k.rgba[0])),
                 ((int)(k.rgba[1])), ((int)(k.rgba[2])), ((int)(k.rgba[3])));
         break;
       }
@@ -92,7 +92,7 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
       case ICONVG_PAINT_TYPE__LINEAR_GRADIENT: {
         fprintf(f,
                 "%send_drawing(linear_gradient{nstops=%d, spread=%s, ...})\n",
-                ((const char*)(c->context_const_ptr)),
+                ((const char*)(c->context.const_ptr3)),
                 ((int)(iconvg_paint__gradient_number_of_stops(p))),
                 spread_names[iconvg_paint__gradient_spread(p)]);
         break;
@@ -101,7 +101,7 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
       case ICONVG_PAINT_TYPE__RADIAL_GRADIENT: {
         fprintf(f,
                 "%send_drawing(radial_gradient{nstops=%d, spread=%s, ...})\n",
-                ((const char*)(c->context_const_ptr)),
+                ((const char*)(c->context.const_ptr3)),
                 ((int)(iconvg_paint__gradient_number_of_stops(p))),
                 spread_names[iconvg_paint__gradient_spread(p)]);
         break;
@@ -113,7 +113,7 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
       }
     }
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -125,12 +125,12 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
 
 static const char*  //
 iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
-    fprintf(f, "%sbegin_path(%g, %g)\n", ((const char*)(c->context_const_ptr)),
+    fprintf(f, "%sbegin_path(%g, %g)\n", ((const char*)(c->context.const_ptr3)),
             x0, y0);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -142,11 +142,11 @@ iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
 
 static const char*  //
 iconvg_private_debug_canvas__end_path(iconvg_canvas* c) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
-    fprintf(f, "%send_path()\n", ((const char*)(c->context_const_ptr)));
+    fprintf(f, "%send_path()\n", ((const char*)(c->context.const_ptr3)));
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -160,12 +160,12 @@ static const char*  //
 iconvg_private_debug_canvas__path_line_to(iconvg_canvas* c,
                                           float x1,
                                           float y1) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     fprintf(f, "%spath_line_to(%g, %g)\n",
-            ((const char*)(c->context_const_ptr)), x1, y1);
+            ((const char*)(c->context.const_ptr3)), x1, y1);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -181,12 +181,12 @@ iconvg_private_debug_canvas__path_quad_to(iconvg_canvas* c,
                                           float y1,
                                           float x2,
                                           float y2) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     fprintf(f, "%spath_quad_to(%g, %g, %g, %g)\n",
-            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2);
+            ((const char*)(c->context.const_ptr3)), x1, y1, x2, y2);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -204,12 +204,12 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
                                           float y2,
                                           float x3,
                                           float y3) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     fprintf(f, "%spath_cube_to(%g, %g, %g, %g, %g, %g)\n",
-            ((const char*)(c->context_const_ptr)), x1, y1, x2, y2, x3, y3);
+            ((const char*)(c->context.const_ptr3)), x1, y1, x2, y2, x3, y3);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -222,13 +222,13 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
 static const char*  //
 iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
                                                  iconvg_rectangle_f32 viewbox) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     fprintf(f, "%son_metadata_viewbox({%g, %g, %g, %g})\n",
-            ((const char*)(c->context_const_ptr)), viewbox.min_x, viewbox.min_y,
-            viewbox.max_x, viewbox.max_y);
+            ((const char*)(c->context.const_ptr3)), viewbox.min_x,
+            viewbox.min_y, viewbox.max_x, viewbox.max_y);
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -242,15 +242,15 @@ static const char*  //
 iconvg_private_debug_canvas__on_metadata_suggested_palette(
     iconvg_canvas* c,
     const iconvg_palette* suggested_palette) {
-  FILE* f = (FILE*)(c->context_nonconst_ptr1);
+  FILE* f = (FILE*)(c->context.nonconst_ptr2);
   if (f) {
     int j = iconvg_private_last_color_that_isnt_opaque_black(suggested_palette);
     if (j < 0) {
       fprintf(f, "%son_metadata_suggested_palette(...)\n",
-              ((const char*)(c->context_const_ptr)));
+              ((const char*)(c->context.const_ptr3)));
     } else {
       fprintf(f, "%son_metadata_suggested_palette(",
-              ((const char*)(c->context_const_ptr)));
+              ((const char*)(c->context.const_ptr3)));
       for (int i = 0; i <= j; i++) {
         fprintf(f, "%02X:%02X:%02X:%02X%s",
                 ((int)(suggested_palette->colors[i].rgba[0])),
@@ -266,7 +266,7 @@ iconvg_private_debug_canvas__on_metadata_suggested_palette(
       }
     }
   }
-  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context_nonconst_ptr0);
+  iconvg_canvas* wrapped = (iconvg_canvas*)(c->context.nonconst_ptr1);
   if (!wrapped) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
@@ -302,9 +302,9 @@ iconvg_canvas__make_debug(FILE* f,
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_debug_canvas_vtable;
-  c.context_nonconst_ptr0 = wrapped;
-  c.context_nonconst_ptr1 = f;
-  c.context_const_ptr = message_prefix ? message_prefix : "";
-  c.context_extra = 0;
+  memset(&c.context, 0, sizeof(c.context));
+  c.context.nonconst_ptr1 = wrapped;
+  c.context.nonconst_ptr2 = f;
+  c.context.const_ptr3 = message_prefix ? message_prefix : "";
   return c;
 }

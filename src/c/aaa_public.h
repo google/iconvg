@@ -63,11 +63,11 @@
 // pilcrow is followed by the library version (e.g. ¶0.2 or ¶1.0.56) that the
 // annotated item has debuted in or will debut in.
 //
-// Some structs may grow in size across releases (and passed by pointer),
-// provided that the first field holds the sizeof that struct and that new
-// versions only add fields, never remove or otherwise change existing fields.
-// "The fields above are ¶etc" pilcrow comments within such structs annotate
-// which fields were added in which versions.
+// Some structs may grow in size across library versions (and passed by
+// pointer), provided that the first field holds the sizeof that struct and
+// that new versions only add fields, never remove or otherwise change existing
+// fields. "The fields above are ¶etc" pilcrow comments within such structs
+// annotate which fields were added in which versions.
 
 // ----
 
@@ -344,15 +344,23 @@ typedef struct iconvg_canvas_struct {
   // vtable defines what 'sub-class' we have.
   const iconvg_canvas_vtable* vtable;
 
-  // context_etc semantics depend on the 'sub-class' and should be considered
-  // private implementation details. For built-in 'sub-classes', as returned by
-  // the library's iconvg_canvas__make_etc functions, users should not read or
-  // write these fields directly and their semantics may change between minor
-  // library releases.
-  void* context_nonconst_ptr0;
-  void* context_nonconst_ptr1;
-  const void* context_const_ptr;
-  size_t context_extra;
+  // context's fields' semantics depend on the 'sub-class' and should be
+  // considered private implementation details. For built-in 'sub-classes', as
+  // returned by the library's iconvg_canvas__make_etc functions, users should
+  // not read or write these fields directly and their semantics may change
+  // between library versions.
+  //
+  // Not all of these fields are used yet, but we overprovision because this
+  // struct cannot grow in size across library versions.
+  struct {
+    void* nonconst_ptr1;
+    void* nonconst_ptr2;
+    const void* const_ptr3;
+    const void* const_ptr4;
+    size_t extra5;
+    size_t extra6;
+    size_t extra7;
+  } context;
 } iconvg_canvas;  // ¶0.1
 
 // ----

@@ -17,7 +17,7 @@
 static const char*  //
 iconvg_private_broken_canvas__begin_decode(iconvg_canvas* c,
                                            iconvg_rectangle_f32 dst_rect) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
@@ -25,35 +25,35 @@ iconvg_private_broken_canvas__end_decode(iconvg_canvas* c,
                                          const char* err_msg,
                                          size_t num_bytes_consumed,
                                          size_t num_bytes_remaining) {
-  return err_msg ? err_msg : ((const char*)(c->context_const_ptr));
+  return err_msg ? err_msg : ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__begin_drawing(iconvg_canvas* c) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__end_drawing(iconvg_canvas* c,
                                           const iconvg_paint* p) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__end_path(iconvg_canvas* c) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__path_line_to(iconvg_canvas* c,
                                            float x1,
                                            float y1) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
@@ -62,7 +62,7 @@ iconvg_private_broken_canvas__path_quad_to(iconvg_canvas* c,
                                            float y1,
                                            float x2,
                                            float y2) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
@@ -73,21 +73,21 @@ iconvg_private_broken_canvas__path_cube_to(iconvg_canvas* c,
                                            float y2,
                                            float x3,
                                            float y3) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__on_metadata_viewbox(
     iconvg_canvas* c,
     iconvg_rectangle_f32 viewbox) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const char*  //
 iconvg_private_broken_canvas__on_metadata_suggested_palette(
     iconvg_canvas* c,
     const iconvg_palette* suggested_palette) {
-  return ((const char*)(c->context_const_ptr));
+  return ((const char*)(c->context.const_ptr3));
 }
 
 static const iconvg_canvas_vtable  //
@@ -110,10 +110,8 @@ iconvg_canvas  //
 iconvg_canvas__make_broken(const char* err_msg) {
   iconvg_canvas c;
   c.vtable = &iconvg_private_broken_canvas_vtable;
-  c.context_nonconst_ptr0 = NULL;
-  c.context_nonconst_ptr1 = NULL;
-  c.context_const_ptr = err_msg;
-  c.context_extra = 0;
+  memset(&c.context, 0, sizeof(c.context));
+  c.context.const_ptr3 = err_msg;
   return c;
 }
 

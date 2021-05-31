@@ -140,7 +140,7 @@ iconvg_private_skia_set_gradient_stops(sk_color_t* gcol,
 static const char*  //
 iconvg_private_skia_canvas__begin_decode(iconvg_canvas* c,
                                          iconvg_rectangle_f32 dst_rect) {
-  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context.nonconst_ptr1);
   sk_canvas_save(sc);
 
   sk_rect_t rect;
@@ -158,36 +158,36 @@ iconvg_private_skia_canvas__end_decode(iconvg_canvas* c,
                                        const char* err_msg,
                                        size_t num_bytes_consumed,
                                        size_t num_bytes_remaining) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   if (spb) {
     sk_pathbuilder_delete(spb);
-    c->context_nonconst_ptr1 = NULL;
+    c->context_nonconst_ptr2 = NULL;
   }
-  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context.nonconst_ptr1);
   sk_canvas_restore(sc);
   return err_msg;
 }
 
 static const char*  //
 iconvg_private_skia_canvas__begin_drawing(iconvg_canvas* c) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   if (spb) {
     sk_pathbuilder_delete(spb);
-    c->context_nonconst_ptr1 = NULL;
+    c->context_nonconst_ptr2 = NULL;
   }
   spb = sk_pathbuilder_new();
   if (!spb) {
     return iconvg_error_system_failure_out_of_memory;
   }
-  c->context_nonconst_ptr1 = spb;
+  c->context_nonconst_ptr2 = spb;
   return NULL;
 }
 
 static const char*  //
 iconvg_private_skia_canvas__end_drawing(iconvg_canvas* c,
                                         const iconvg_paint* p) {
-  sk_canvas_t* sc = (sk_canvas_t*)(c->context_nonconst_ptr0);
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_canvas_t* sc = (sk_canvas_t*)(c->context.nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
 
   iconvg_paint_type paint_type = iconvg_paint__type(p);
   switch (paint_type) {
@@ -302,28 +302,28 @@ iconvg_private_skia_canvas__end_drawing(iconvg_canvas* c,
   // Clean up.
   if (spb) {
     sk_pathbuilder_delete(spb);
-    c->context_nonconst_ptr1 = NULL;
+    c->context_nonconst_ptr2 = NULL;
   }
   return NULL;
 }
 
 static const char*  //
 iconvg_private_skia_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   sk_pathbuilder_move_to(spb, x0, y0);
   return NULL;
 }
 
 static const char*  //
 iconvg_private_skia_canvas__end_path(iconvg_canvas* c) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   sk_pathbuilder_close(spb);
   return NULL;
 }
 
 static const char*  //
 iconvg_private_skia_canvas__path_line_to(iconvg_canvas* c, float x1, float y1) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   sk_pathbuilder_line_to(spb, x1, y1);
   return NULL;
 }
@@ -334,7 +334,7 @@ iconvg_private_skia_canvas__path_quad_to(iconvg_canvas* c,
                                          float y1,
                                          float x2,
                                          float y2) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   sk_pathbuilder_quad_to(spb, x1, y1, x2, y2);
   return NULL;
 }
@@ -347,7 +347,7 @@ iconvg_private_skia_canvas__path_cube_to(iconvg_canvas* c,
                                          float y2,
                                          float x3,
                                          float y3) {
-  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr1);
+  sk_pathbuilder_t* spb = (sk_pathbuilder_t*)(c->context_nonconst_ptr2);
   sk_pathbuilder_cubic_to(spb, x1, y1, x2, y2, x3, y3);
   return NULL;
 }
@@ -389,10 +389,8 @@ iconvg_canvas__make_skia(sk_canvas_t* sc) {
   }
   iconvg_canvas c;
   c.vtable = &iconvg_private_skia_canvas_vtable;
-  c.context_nonconst_ptr0 = sc;
-  c.context_nonconst_ptr1 = NULL;
-  c.context_const_ptr = NULL;
-  c.context_extra = 0;
+  memset(&c.context, 0, sizeof(c.context));
+  c.context.nonconst_ptr1 = sc;
   return c;
 }
 
