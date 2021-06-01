@@ -300,8 +300,9 @@ above](#natural-numbers)) of the number of metadata chunks in the metadata,
 followed by that many chunks. Each chunk starts with the length remaining in
 the chunk (again, encoded as a natural number), not including the chunk length
 itself. After that is a *MID* (Metadata Identifier) natural number, then
-MID-specific data. Chunks must be presented in increasing MID order. MIDs
-cannot be repeated. All MIDs are optional.
+MID-specific data. Chunks must be presented in increasing MID order and as MIDs
+are natural numbers, the minimum MID is zero. MIDs cannot be repeated. All MIDs
+are optional.
 
 
 ### MID 0 - ViewBox
