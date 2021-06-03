@@ -192,6 +192,7 @@ class _IconVGMachine {
   final Uint8List bytes;
   int cursor = 0;
 
+  @pragma("vm:prefer-inline")
   int get nextByte {
     if (cursor >= bytes.length) {
       throw FormatException('Unexpected end of file at offset $cursor.');
@@ -581,6 +582,10 @@ class _IconVGMachine {
     }
   }
 
+  // We use a global static to hold the current path so that we can avoid allocating a new Path at runtime (this being
+  // an apparently very expensive operation). // TODO(ianh): https://github.com/flutter/flutter/issues/83872
+  static final Path path = Path(); // TODO(ianh): apply https://github.com/google/iconvg/issues/21 (fill type)
+
   void execute() {
     final PictureRecorder recorder = PictureRecorder();
     final Canvas canvas = Canvas(recorder, viewBox); // TODO(ianh): apply https://github.com/google/iconvg/issues/15 (viewBox culling)
@@ -598,10 +603,9 @@ class _IconVGMachine {
         canvas.saveLayer(viewBox, Paint());
         break;
     }
-    _RenderingMode mode = _RenderingMode.styling;
-    Path? path;
     Paint? paint;
     late double x, y, cx, cy; // x,y is the current point; cx,cy is the old control point.
+    _RenderingMode mode = _RenderingMode.styling;
     _DrawingCommand lastOpcode = _DrawingCommand.other;
     while (cursor < bytes.length) {
       final int opcode = nextByte;
@@ -673,7 +677,8 @@ class _IconVGMachine {
             mode = _RenderingMode.drawing;
             x = decodeCoordinateNumber();
             y = decodeCoordinateNumber();
-            path = Path() // TODO(ianh): apply https://github.com/google/iconvg/issues/21 (fill type)
+            path
+              ..reset()
               ..moveTo(x, y);
             lastOpcode = _DrawingCommand.other;
             paint = Paint()
@@ -695,7 +700,7 @@ class _IconVGMachine {
           break;
 
         case _RenderingMode.drawing:
-          path!; paint!;
+          paint!;
           final int RC = (opcode <= 0x3F ? opcode & 0x1F : opcode & 0x0F) + 1;
           if (opcode <= 0x1F) {
             for (int repeat = 0; repeat < RC; repeat += 1) {
@@ -844,24 +849,23 @@ class _IconVGMachine {
             throw FormatException('Unexpected reserved opcode $opcode.');
 
           } else if (opcode <= 0xE1) {
-            path.close();
+            // path.close(); // redundant since we always fill
             lastOpcode = _DrawingCommand.other;
             if (LOD0 <= H && H < LOD1) {
               canvas.drawPath(path, paint);
             }
             mode = _RenderingMode.styling;
-            path = null;
             paint = null;
 
           } else if (opcode <= 0xE2) {
-            path.close();
+            // path.close(); // redundant since we always fill
             x = decodeCoordinateNumber();
             y = decodeCoordinateNumber();
             path.moveTo(x, y);
             lastOpcode = _DrawingCommand.other;
 
           } else if (opcode <= 0xE3) {
-            path.close();
+            // path.close(); // redundant since we always fill
             x += decodeCoordinateNumber();
             y += decodeCoordinateNumber();
             path.moveTo(x, y);
