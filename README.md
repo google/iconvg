@@ -49,9 +49,16 @@ The [test/data](./test/data) directory holds these files and other examples.
 
 ## Implementations
 
+This repository contains:
+
+- a decoder [written in C](./release/c)
+- a decoder [written in Dart](./src/dart)
+- a low-level decoder [written in Go](./src/go). Low-level means that it
+  outputs numbers (vector coordinates), not pixels.
+
 The [original Go IconVG
-package](https://pkg.go.dev/golang.org/x/exp/shiny/iconvg) implements a decoder
-and encoder.
+package](https://pkg.go.dev/golang.org/x/exp/shiny/iconvg) also implements a
+decoder and encoder.
 
 
 ## Disclaimer
@@ -62,4 +69,4 @@ owned by Google.
 
 ---
 
-Updated on March 2021.
+Updated on June 2021.
