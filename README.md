@@ -5,6 +5,9 @@ glyphs and emoji.
 
 **WARNING: THIS FORMAT IS EXPERIMENTAL AND SUBJECT TO INCOMPATIBLE CHANGES.**
 
+Specifically, we are considering [**substantial changes to the file
+format**](https://github.com/google/iconvg/issues/4) to happen in mid-2021.
+
 It is similar in concept to SVG (Scalable Vector Graphics) but much simpler.
 Compared to [SVG Tiny](https://www.w3.org/TR/SVGTiny12/), which isn't actually
 tiny, it does not have features for text, multimedia, interactivity, linking,

@@ -5,6 +5,9 @@ glyphs and emoji.
 
 **WARNING: THIS FORMAT IS EXPERIMENTAL AND SUBJECT TO INCOMPATIBLE CHANGES.**
 
+Specifically, we are considering [**substantial changes to the file
+format**](https://github.com/google/iconvg/issues/4) to happen in mid-2021.
+
 
 ## Structure
 
