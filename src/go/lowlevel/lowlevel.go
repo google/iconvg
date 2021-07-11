@@ -29,6 +29,7 @@ import (
 var (
 	errInconsistentMetadataChunkLength = errors.New("iconvg: inconsistent metadata chunk length")
 	errInvalidColor                    = errors.New("iconvg: invalid color")
+	errInvalidExtraDataLength          = errors.New("iconvg: invalid extra data length")
 	errInvalidMagicIdentifier          = errors.New("iconvg: invalid magic identifier")
 	errInvalidMetadataChunkLength      = errors.New("iconvg: invalid metadata chunk length")
 	errInvalidMetadataIdentifier       = errors.New("iconvg: invalid metadata identifier")
@@ -36,9 +37,16 @@ var (
 	errInvalidNumberOfMetadataChunks   = errors.New("iconvg: invalid number of metadata chunks")
 	errInvalidSuggestedPalette         = errors.New("iconvg: invalid suggested palette")
 	errInvalidViewBox                  = errors.New("iconvg: invalid view box")
-	errUnsupportedDrawingOpcode        = errors.New("iconvg: unsupported drawing opcode")
 	errUnsupportedMetadataIdentifier   = errors.New("iconvg: unsupported metadata identifier")
-	errUnsupportedStylingOpcode        = errors.New("iconvg: unsupported styling opcode")
+)
+
+// featureBits are a bitmask of optional extensions to the core IconVG file
+// format. Over time, features may be added to the format and newer IconVG
+// files can tell older decoders to skip over parts they wouldn't understand.
+type featureBits uint32
+
+const (
+	featureBitsAnimation featureBits = 0x00000001
 )
 
 var gradientShapeNames = [2]string{
@@ -53,7 +61,7 @@ var gradientSpreadNames = [4]string{
 	"repeat",
 }
 
-const magic = "\x89IVG"
+const magic = "\x8AIVG"
 
 var magicBytes = []byte(magic)
 
@@ -87,8 +95,8 @@ type Metadata struct {
 }
 
 const (
-	midViewBox          = 0
-	midSuggestedPalette = 1
+	midViewBox          = 8
+	midSuggestedPalette = 16
 )
 
 // DefaultViewBox is the default ViewBox. Its values should not be modified.

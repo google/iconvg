@@ -16,6 +16,7 @@ package lowlevel
 
 import (
 	"bytes"
+	"fmt"
 	"image/color"
 )
 
@@ -32,33 +33,18 @@ var midDescriptions = [...]string{
 type Destination interface {
 	Reset(m Metadata)
 
-	SetCSel(cSel uint8)
-	SetNSel(nSel uint8)
-	SetCReg(adj uint8, incr bool, c Color)
-	SetNReg(adj uint8, incr bool, f float32)
-	SetLOD(lod0, lod1 float32)
+	// QueryLevelOfDetail returns whether the height-in-pixels H satisfies
+	// ((lod0 <= H) && (H < lod1)).
+	QueryLevelOfDetail(lod0, lod1 float32) bool
 
-	StartPath(adj uint8, x, y float32)
-	ClosePathEndPath()
-	ClosePathAbsMoveTo(x, y float32)
-	ClosePathRelMoveTo(x, y float32)
+	ClosePathMoveTo(x, y float32)
+	LineTo(x, y float32)
+	QuadTo(x1, y1, x, y float32)
+	CubeTo(x1, y1, x2, y2, x, y float32)
+	Ellipse(nQuarters uint32, x1, y1, x2, y2, x, y float32)
+	Parallelogram(x1, y1, x2, y2, x, y float32)
 
-	AbsHLineTo(x float32)
-	RelHLineTo(x float32)
-	AbsVLineTo(y float32)
-	RelVLineTo(y float32)
-	AbsLineTo(x, y float32)
-	RelLineTo(x, y float32)
-	AbsSmoothQuadTo(x, y float32)
-	RelSmoothQuadTo(x, y float32)
-	AbsQuadTo(x1, y1, x, y float32)
-	RelQuadTo(x1, y1, x, y float32)
-	AbsSmoothCubeTo(x2, y2, x, y float32)
-	RelSmoothCubeTo(x2, y2, x, y float32)
-	AbsCubeTo(x1, y1, x2, y2, x, y float32)
-	RelCubeTo(x1, y1, x2, y2, x, y float32)
-	AbsArcTo(rx, ry, xAxisRotation float32, largeArc, sweep bool, x, y float32)
-	RelArcTo(rx, ry, xAxisRotation float32, largeArc, sweep bool, x, y float32)
+	ClosePathFill() // TODO.
 }
 
 // printer prints debug information (the disassembly) during the decode. b
@@ -90,12 +76,12 @@ func DecodeMetadata(src []byte) (m Metadata, retErr error) {
 	return m, nil
 }
 
-func decode(dst Destination, p printer, m *Metadata, metadataOnly bool, src buffer, opts *DecodeOptions) error {
+func decode(dst Destination, p printer, m *Metadata, metadataOnly bool, src buffer, opts *DecodeOptions) (retErr error) {
 	if !bytes.HasPrefix(src, magicBytes) {
 		return errInvalidMagicIdentifier
 	}
 	if p != nil {
-		p(src[:len(magic)], "IconVG Magic identifier\n")
+		p(src[:len(magic)], "IconVG Magic Identifier\n")
 	}
 	src = src[len(magic):]
 
@@ -112,10 +98,8 @@ func decode(dst Destination, p printer, m *Metadata, metadataOnly bool, src buff
 		m = &Metadata{}
 	}
 	for ; nMetadataChunks > 0; nMetadataChunks-- {
-		err := error(nil)
-		src, err = decodeMetadataChunk(p, m, src, opts)
-		if err != nil {
-			return err
+		if src, retErr = decodeMetadataChunk(p, m, src, opts); retErr != nil {
+			return retErr
 		}
 	}
 	if metadataOnly {
@@ -124,16 +108,7 @@ func decode(dst Destination, p printer, m *Metadata, metadataOnly bool, src buff
 	if dst != nil {
 		dst.Reset(*m)
 	}
-
-	mf := modeFunc(decodeStyling)
-	for len(src) > 0 {
-		err := error(nil)
-		mf, src, err = mf(dst, p, src)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return decodeBytecode(dst, p, src)
 }
 
 func decodeMetadataChunk(p printer, m *Metadata, src buffer, opts *DecodeOptions) (src1 buffer, retErr error) {
@@ -161,19 +136,14 @@ func decodeMetadataChunk(p printer, m *Metadata, src buffer, opts *DecodeOptions
 
 	switch mid {
 	case midViewBox:
-		err := error(nil)
-		if m.ViewBox.Min[0], src, err = decodeNumber(p, src, buffer.decodeCoordinate); err != nil {
-			return nil, errInvalidViewBox
+		args := [4]float32{}
+		if src, retErr = decodeCoordinates(args[:4], p, src); retErr != nil {
+			return nil, retErr
 		}
-		if m.ViewBox.Min[1], src, err = decodeNumber(p, src, buffer.decodeCoordinate); err != nil {
-			return nil, errInvalidViewBox
-		}
-		if m.ViewBox.Max[0], src, err = decodeNumber(p, src, buffer.decodeCoordinate); err != nil {
-			return nil, errInvalidViewBox
-		}
-		if m.ViewBox.Max[1], src, err = decodeNumber(p, src, buffer.decodeCoordinate); err != nil {
-			return nil, errInvalidViewBox
-		}
+		m.ViewBox.Min[0] = args[0]
+		m.ViewBox.Min[1] = args[1]
+		m.ViewBox.Max[0] = args[2]
+		m.ViewBox.Max[1] = args[3]
 		if m.ViewBox.Min[0] > m.ViewBox.Max[0] || m.ViewBox.Min[1] > m.ViewBox.Max[1] ||
 			isNaNOrInfinity(m.ViewBox.Min[0]) || isNaNOrInfinity(m.ViewBox.Min[1]) ||
 			isNaNOrInfinity(m.ViewBox.Max[0]) || isNaNOrInfinity(m.ViewBox.Max[1]) {
@@ -181,39 +151,34 @@ func decodeMetadataChunk(p printer, m *Metadata, src buffer, opts *DecodeOptions
 		}
 
 	case midSuggestedPalette:
-		if len(src) == 0 {
+		if (len(src) == 0) || ((src[0] >> 6) != 0) {
 			return nil, errInvalidSuggestedPalette
 		}
-		length, format := 1+int(src[0]&0x3f), src[0]>>6
-		decode := buffer.decodeColor4
-		switch format {
-		case 0:
-			decode = buffer.decodeColor1
-		case 1:
-			decode = buffer.decodeColor2
-		case 2:
-			decode = buffer.decodeColor3Direct
-		}
+		length := 1 + int(src[0]&0x3f)
 		if p != nil {
-			p(src[:1], "    %d palette colors, %d bytes per color\n", length, 1+format)
+			p(src[:1], "      %d palette colors\n", length)
 		}
 		src = src[1:]
 
 		for i := 0; i < length; i++ {
-			c, n := decode(src)
-			if n == 0 {
+			if len(src) < 4 {
 				return nil, errInvalidSuggestedPalette
 			}
-			rgba := c.rgba()
-			if c.typ != colorTypeRGBA || !validAlphaPremulColor(rgba) {
-				rgba = color.RGBA{0x00, 0x00, 0x00, 0xff}
+			c := color.RGBA{
+				R: src[0],
+				G: src[1],
+				B: src[2],
+				A: src[3],
+			}
+			if !validAlphaPremulColor(c) {
+				c = color.RGBA{0x00, 0x00, 0x00, 0xff}
 			}
 			if p != nil {
-				p(src[:n], "    RGBA %02x%02x%02x%02x\n", rgba.R, rgba.G, rgba.B, rgba.A)
+				p(src[:4], "      rgba(%02X:%02X:%02X:%02X)\n", c.R, c.G, c.B, c.A)
 			}
-			src = src[n:]
+			src = src[4:]
 			if opts == nil || opts.Palette == nil {
-				m.Palette[i] = rgba
+				m.Palette[i] = c
 			}
 		}
 
@@ -227,463 +192,480 @@ func decodeMetadataChunk(p printer, m *Metadata, src buffer, opts *DecodeOptions
 	return src, nil
 }
 
-// modeFunc is the decoding mode: whether we are decoding styling or drawing
-// opcodes.
-//
-// It is a function type. The decoding loop calls this function to decode and
-// execute the next opcode from the src buffer, returning the subsequent mode
-// and the remaining source bytes.
-type modeFunc func(dst Destination, p printer, src buffer) (modeFunc, buffer, error)
+func decodeBytecode(dst Destination, p printer, src buffer) (retErr error) {
+	originalDst := dst
+	pc := uint32(0) // 'Program counter', counting instructions.
+	jumpDistRemaining := uint32(0)
+	curr := [2]float32{}
+	args := [6]float32{}
 
-func decodeStyling(dst Destination, p printer, src buffer) (modeFunc, buffer, error) {
-	switch opcode := src[0]; {
-	case opcode < 0x80:
-		if opcode < 0x40 {
-			opcode &= 0x3f
-			if p != nil {
-				p(src[:1], "Set CSEL = %d\n", opcode)
-			}
-			src = src[1:]
-			if dst != nil {
-				dst.SetCSel(opcode)
-			}
-		} else {
-			opcode &= 0x3f
-			if p != nil {
-				p(src[:1], "Set NSEL = %d\n", opcode)
-			}
-			src = src[1:]
-			if dst != nil {
-				dst.SetNSel(opcode)
+	for len(src) > 0 {
+		if jumpDistRemaining > 0 {
+			jumpDistRemaining--
+			if jumpDistRemaining == 0 {
+				dst = originalDst
 			}
 		}
-		return decodeStyling, src, nil
-	case opcode < 0xa8:
-		return decodeSetCReg(dst, p, src, opcode)
-	case opcode < 0xc0:
-		return decodeSetNReg(dst, p, src, opcode)
-	case opcode < 0xc7:
-		return decodeStartPath(dst, p, src, opcode)
-	case opcode == 0xc7:
-		return decodeSetLOD(dst, p, src)
-	}
-	return nil, nil, errUnsupportedStylingOpcode
-}
 
-func decodeSetCReg(dst Destination, p printer, src buffer, opcode byte) (modeFunc, buffer, error) {
-	nBytes, directness, adj := 0, "", opcode&0x07
-	var decode func(buffer) (Color, int)
-	incr := adj == 7
-	if incr {
-		adj = 0
-	}
-
-	switch (opcode - 0x80) >> 3 {
-	case 0:
-		nBytes, directness, decode = 1, "", buffer.decodeColor1
-	case 1:
-		nBytes, directness, decode = 2, "", buffer.decodeColor2
-	case 2:
-		nBytes, directness, decode = 3, " (direct)", buffer.decodeColor3Direct
-	case 3:
-		nBytes, directness, decode = 4, "", buffer.decodeColor4
-	case 4:
-		nBytes, directness, decode = 3, " (indirect)", buffer.decodeColor3Indirect
-	}
-	if p != nil {
-		if incr {
-			p(src[:1], "Set CREG[CSEL-0] to a %d byte%s color; CSEL++\n", nBytes, directness)
-		} else {
-			p(src[:1], "Set CREG[CSEL-%d] to a %d byte%s color\n", adj, nBytes, directness)
-		}
-	}
-	src = src[1:]
-
-	c, n := decode(src)
-	if n == 0 {
-		return nil, nil, errInvalidColor
-	}
-
-	if p != nil {
-		printColor(src[:n], p, c, "")
-	}
-	src = src[n:]
-
-	if dst != nil {
-		dst.SetCReg(adj, incr, c)
-	}
-
-	return decodeStyling, src, nil
-}
-
-func printColor(src []byte, p printer, c Color, prefix string) {
-	switch c.typ {
-	case colorTypeRGBA:
-		if rgba := c.rgba(); validAlphaPremulColor(rgba) {
-			p(src, "    %sRGBA %02x%02x%02x%02x\n", prefix, rgba.R, rgba.G, rgba.B, rgba.A)
-		} else if rgba.A == 0 && rgba.B&0x80 != 0 {
-			p(src, "    %sgradient (NSTOPS=%d, CBASE=%d, NBASE=%d, %s, %s)\n",
-				prefix,
-				rgba.R&0x3f,
-				rgba.G&0x3f,
-				rgba.B&0x3f,
-				gradientShapeNames[(rgba.B>>6)&0x01],
-				gradientSpreadNames[rgba.G>>6],
-			)
-		} else {
-			p(src, "    %snonsensical color\n", prefix)
-		}
-	case colorTypePaletteIndex:
-		p(src, "    %scustomPalette[%d]\n", prefix, c.paletteIndex())
-	case colorTypeCReg:
-		p(src, "    %sCREG[%d]\n", prefix, c.cReg())
-	case colorTypeBlend:
-		t, c0, c1 := c.blend()
-		p(src[:1], "    blend %d:%d c0:c1\n", 0xff-t, t)
-		printColor(src[1:2], p, decodeColor1(c0), "    c0: ")
-		printColor(src[2:3], p, decodeColor1(c1), "    c1: ")
-	}
-}
-
-func decodeSetNReg(dst Destination, p printer, src buffer, opcode byte) (modeFunc, buffer, error) {
-	decode, typ, adj := buffer.decodeZeroToOne, "zero-to-one", opcode&0x07
-	incr := adj == 7
-	if incr {
-		adj = 0
-	}
-
-	switch (opcode - 0xa8) >> 3 {
-	case 0:
-		decode, typ = buffer.decodeReal, "real"
-	case 1:
-		decode, typ = buffer.decodeCoordinate, "coordinate"
-	}
-	if p != nil {
-		if incr {
-			p(src[:1], "Set NREG[NSEL-0] to a %s number; NSEL++\n", typ)
-		} else {
-			p(src[:1], "Set NREG[NSEL-%d] to a %s number\n", adj, typ)
-		}
-	}
-	src = src[1:]
-
-	f, n := decode(src)
-	if n == 0 {
-		return nil, nil, errInvalidNumber
-	}
-	if p != nil {
-		p(src[:n], "    %g\n", f)
-	}
-	src = src[n:]
-
-	if dst != nil {
-		dst.SetNReg(adj, incr, f)
-	}
-
-	return decodeStyling, src, nil
-}
-
-func decodeStartPath(dst Destination, p printer, src buffer, opcode byte) (modeFunc, buffer, error) {
-	adj := opcode & 0x07
-	if p != nil {
-		p(src[:1], "Start path, filled with CREG[CSEL-%d]; M (absolute moveTo)\n", adj)
-	}
-	src = src[1:]
-
-	x, src, err := decodeNumber(p, src, buffer.decodeCoordinate)
-	if err != nil {
-		return nil, nil, err
-	}
-	y, src, err := decodeNumber(p, src, buffer.decodeCoordinate)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if dst != nil {
-		dst.StartPath(adj, x, y)
-	}
-
-	return decodeDrawing, src, nil
-}
-
-func decodeSetLOD(dst Destination, p printer, src buffer) (modeFunc, buffer, error) {
-	if p != nil {
-		p(src[:1], "Set LOD\n")
-	}
-	src = src[1:]
-
-	lod0, src, err := decodeNumber(p, src, buffer.decodeReal)
-	if err != nil {
-		return nil, nil, err
-	}
-	lod1, src, err := decodeNumber(p, src, buffer.decodeReal)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if dst != nil {
-		dst.SetLOD(lod0, lod1)
-	}
-	return decodeStyling, src, nil
-}
-
-func decodeDrawing(dst Destination, p printer, src buffer) (mf modeFunc, src1 buffer, retErr error) {
-	var coords [6]float32
-
-	switch opcode := src[0]; {
-	case opcode < 0xe0:
-		op, nCoords, nReps := "", 0, 1+int(opcode&0x0f)
-		switch opcode >> 4 {
-		case 0x00, 0x01:
-			op = "L (absolute lineTo)"
-			nCoords = 2
-			nReps = 1 + int(opcode&0x1f)
-		case 0x02, 0x03:
-			op = "l (relative lineTo)"
-			nCoords = 2
-			nReps = 1 + int(opcode&0x1f)
-		case 0x04:
-			op = "T (absolute smooth quadTo)"
-			nCoords = 2
-		case 0x05:
-			op = "t (relative smooth quadTo)"
-			nCoords = 2
-		case 0x06:
-			op = "Q (absolute quadTo)"
-			nCoords = 4
-		case 0x07:
-			op = "q (relative quadTo)"
-			nCoords = 4
-		case 0x08:
-			op = "S (absolute smooth cubeTo)"
-			nCoords = 4
-		case 0x09:
-			op = "s (relative smooth cubeTo)"
-			nCoords = 4
-		case 0x0a:
-			op = "C (absolute cubeTo)"
-			nCoords = 6
-		case 0x0b:
-			op = "c (relative cubeTo)"
-			nCoords = 6
-		case 0x0c:
-			op = "A (absolute arcTo)"
-			nCoords = 0
-		case 0x0d:
-			op = "a (relative arcTo)"
-			nCoords = 0
-		}
-
-		if p != nil {
-			p(src[:1], "%s, %d reps\n", op, nReps)
-		}
-		src = src[1:]
-
-		for i := 0; i < nReps; i++ {
-			if p != nil && i != 0 {
-				p(nil, "%s, implicit\n", op)
-			}
-			var largeArc, sweep bool
-			if op[0] != 'A' && op[0] != 'a' {
-				err := error(nil)
-				src, err = decodeCoordinates(coords[:nCoords], p, src)
-				if err != nil {
-					return nil, nil, err
+		switch opcode := src[0]; opcode >> 6 {
+		case 0: // Path-drawing, miscellaneous, jump and call opcodes.
+			if opcode < 0x30 {
+				if src, retErr = decodeLineQuadCubeTo(dst, p, src, pc, opcode, &curr); retErr != nil {
+					return retErr
 				}
+				pc++
+
+			} else if opcode < 0x34 {
+				nQuarters := 1 + uint32(opcode&3)
+				if p != nil {
+					p(src[:1], "#%04d Ellipse (%d quarters)\n", pc, nQuarters)
+					pc++
+				}
+				src = src[1:]
+				if src, retErr = decodeCoordinates(args[:4], p, src); retErr != nil {
+					return retErr
+				}
+				if dst != nil {
+					dst.Ellipse(nQuarters, args[0], args[1], args[2], args[3], curr[0], curr[1])
+				}
+
 			} else {
-				err := error(nil)
-				// We have an absolute or relative arcTo.
-				src, err = decodeCoordinates(coords[:2], p, src)
-				if err != nil {
-					return nil, nil, err
-				}
-				coords[2], src, err = decodeAngle(p, src)
-				if err != nil {
-					return nil, nil, err
-				}
-				largeArc, sweep, src, err = decodeArcToFlags(p, src)
-				if err != nil {
-					return nil, nil, err
-				}
-				src, err = decodeCoordinates(coords[4:6], p, src)
-				if err != nil {
-					return nil, nil, err
+				switch opcode & 0x0F {
+				case 0x04:
+					if p != nil {
+						p(src[:1], "#%04d Parallelogram\n", pc)
+						pc++
+					}
+					src = src[1:]
+					if src, retErr = decodeCoordinates(args[:4], p, src); retErr != nil {
+						return retErr
+					}
+					if dst != nil {
+						dst.Parallelogram(args[0], args[1], args[2], args[3], curr[0], curr[1])
+					}
+
+				case 0x05:
+					if p != nil {
+						p(src[:1], "#%04d ClosePath; MoveTo\n", pc)
+						pc++
+					}
+					src = src[1:]
+					if src, retErr = decodeCoordinates(curr[:2], p, src); retErr != nil {
+						return retErr
+					}
+					if dst != nil {
+						dst.ClosePathMoveTo(curr[0], curr[1])
+					}
+
+				case 0x06:
+					if len(src) < 2 {
+						return errInvalidNumber
+					}
+					delta := src[1] & 63
+					if p != nil {
+						p(src[:2], "#%04d SEL += %d\n", pc, delta)
+						pc++
+					}
+					src = src[2:]
+					if dst != nil {
+						// TODO: set register state.
+					}
+
+				case 0x07:
+					if p != nil {
+						p(src[:1], "#%04d NOP\n", pc)
+						pc++
+					}
+					src = src[1:]
+
+				case 0x08:
+					if p != nil {
+						p(src[:1], "#%04d Jump Unconditional\n", pc)
+						pc++
+					}
+					src = src[1:]
+					jumpDist, n := src.decodeNatural()
+					if n == 0 {
+						return errInvalidNumber
+					}
+					if p != nil {
+						p(src[:n], "      Target: #%04d (PC+%d)\n", pc+jumpDist, jumpDist)
+					}
+					src = src[n:]
+					if dst != nil {
+						dst = nil
+						jumpDistRemaining = jumpDist + 1
+					}
+
+				case 0x09:
+					if p != nil {
+						p(src[:1], "#%04d Jump Feature-Bits\n", pc)
+						pc++
+					}
+					src = src[1:]
+					jumpDist, n := src.decodeNatural()
+					if n == 0 {
+						return errInvalidNumber
+					}
+					if p != nil {
+						p(src[:n], "      Target: #%04d (PC+%d)\n", pc+jumpDist, jumpDist)
+					}
+					src = src[n:]
+					fBits, n := src.decodeNatural()
+					if n == 0 {
+						return errInvalidNumber
+					}
+					if p != nil {
+						p(src[:n], "      FeatureBits: 0x%08X\n", fBits)
+					}
+					src = src[n:]
+					// This decoder doesn't support any feature bits.
+					if dst != nil {
+						dst = nil
+						jumpDistRemaining = jumpDist + 1
+					}
+
+				case 0x0A:
+					if p != nil {
+						p(src[:1], "#%04d Jump Level-of-Detail\n", pc)
+						pc++
+					}
+					src = src[1:]
+					jumpDist, n := src.decodeNatural()
+					if n == 0 {
+						return errInvalidNumber
+					}
+					if p != nil {
+						p(src[:n], "      Target: #%04d (PC+%d)\n", pc+jumpDist, jumpDist)
+					}
+					src = src[n:]
+					lod := [2]float32{}
+					if src, retErr = decodeCoordinates(lod[:2], p, src); retErr != nil {
+						return retErr
+					}
+					if (dst != nil) && !dst.QueryLevelOfDetail(lod[0], lod[1]) {
+						dst = nil
+						jumpDistRemaining = jumpDist + 1
+					}
+
+				case 0x0B:
+					if p != nil {
+						p(src[:1], "#%04d RET\n", pc)
+						pc++
+					}
+					src = src[1:]
+					if dst != nil {
+						return nil
+					}
+
+				default:
+					return fmt.Errorf("iconvg: TODO: call opcodes")
 				}
 			}
 
-			if dst == nil {
-				continue
+		case 1: // Set-register opcodes.
+			decr, adj := "", opcode&0x0F
+			if adj == 0 {
+				decr = "; SEL--"
 			}
-			switch op[0] {
-			case 'L':
-				dst.AbsLineTo(coords[0], coords[1])
-			case 'l':
-				dst.RelLineTo(coords[0], coords[1])
-			case 'T':
-				dst.AbsSmoothQuadTo(coords[0], coords[1])
-			case 't':
-				dst.RelSmoothQuadTo(coords[0], coords[1])
-			case 'Q':
-				dst.AbsQuadTo(coords[0], coords[1], coords[2], coords[3])
-			case 'q':
-				dst.RelQuadTo(coords[0], coords[1], coords[2], coords[3])
-			case 'S':
-				dst.AbsSmoothCubeTo(coords[0], coords[1], coords[2], coords[3])
-			case 's':
-				dst.RelSmoothCubeTo(coords[0], coords[1], coords[2], coords[3])
-			case 'C':
-				dst.AbsCubeTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5])
-			case 'c':
-				dst.RelCubeTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5])
-			case 'A':
-				dst.AbsArcTo(coords[0], coords[1], coords[2], largeArc, sweep, coords[4], coords[5])
-			case 'a':
-				dst.RelArcTo(coords[0], coords[1], coords[2], largeArc, sweep, coords[4], coords[5])
+			switch (opcode >> 4) & 3 {
+			case 0:
+				if p != nil {
+					p(src[:1], "#%04d Set REGS[SEL+%d].lo32%s\n", pc, adj, decr)
+					pc++
+				}
+				src = src[1:]
+				if src, retErr = decodeSetRegLo32(dst, p, src); retErr != nil {
+					return retErr
+				}
+			case 1:
+				if p != nil {
+					p(src[:1], "#%04d Set REGS[SEL+%d].hi32%s\n", pc, adj, decr)
+					pc++
+				}
+				src = src[1:]
+				if src, retErr = decodeSetRegHi32(dst, p, src); retErr != nil {
+					return retErr
+				}
+			case 2:
+				if p != nil {
+					p(src[:1], "#%04d Set REGS[SEL+%d]%s\n", pc, adj, decr)
+					pc++
+				}
+				src = src[1:]
+				if src, retErr = decodeSetRegLo32(dst, p, src); retErr != nil {
+					return retErr
+				}
+				if src, retErr = decodeSetRegHi32(dst, p, src); retErr != nil {
+					return retErr
+				}
+			case 3:
+				if p != nil {
+					p(src[:1], "#%04d SEL -= %d; Set REGS[SEL+1 .. SEL+%d]\n", pc, adj+2, adj+3)
+					pc++
+				}
+				src = src[1:]
+				for i := 0; i < int(adj+2); i++ {
+					if src, retErr = decodeSetRegLo32(dst, p, src); retErr != nil {
+						return retErr
+					}
+					if src, retErr = decodeSetRegHi32(dst, p, src); retErr != nil {
+						return retErr
+					}
+				}
 			}
-		}
 
-	case opcode == 0xe1:
-		if p != nil {
-			p(src[:1], "z (closePath); end path\n")
-		}
-		src = src[1:]
-		if dst != nil {
-			dst.ClosePathEndPath()
-		}
-		return decodeStyling, src, nil
+		case 2: // Fill opcodes.
+			incr, adj := "", opcode&0x0F
+			if adj == 0 {
+				incr = "SEL++; "
+			}
 
-	case opcode == 0xe2:
-		if p != nil {
-			p(src[:1], "z (closePath); M (absolute moveTo)\n")
-		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:2], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.ClosePathAbsMoveTo(coords[0], coords[1])
-		}
+			switch o := (opcode >> 4) & 3; o {
+			case 0:
+				if p != nil {
+					p(src[:1], "#%04d ClosePath; %sFill (flat color) with REGS[SEL+%d]\n", pc, incr, adj)
+					pc++
+				}
+				src = src[1:]
+				if dst != nil {
+					dst.ClosePathFill()
+				}
 
-	case opcode == 0xe3:
-		if p != nil {
-			p(src[:1], "z (closePath); m (relative moveTo)\n")
-		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:2], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.ClosePathRelMoveTo(coords[0], coords[1])
-		}
+			case 1, 2:
+				if len(src) < 2 {
+					return errInvalidColor
+				}
+				grad := "linear"
+				if o == 2 {
+					grad = "radial"
+				}
+				if p != nil {
+					p(src[:2], "#%04d ClosePath; %sFill (%s gradient; %s) with REGS[SEL+%d .. SEL+%d]\n",
+						pc, incr, grad, gradientSpreadNames[src[1]>>6], adj, adj+2+(src[1]&63))
+					pc++
+				}
+				src = src[2:]
+				for i := 0; i < int(3*o); i++ {
+					f, n := src.decodeFloat32()
+					if n == 0 {
+						return errInvalidNumber
+					}
+					if p != nil {
+						p(src[:n], "      %+g\n", f)
+					}
+					args[i] = f
+					src = src[n:]
+				}
+				if dst != nil {
+					dst.ClosePathFill()
+				}
 
-	case opcode == 0xe6:
-		if p != nil {
-			p(src[:1], "H (absolute horizontal lineTo)\n")
-		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:1], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.AbsHLineTo(coords[0])
-		}
+			case 3:
+				if p != nil {
+					p(src[:1], "#%04d ClosePath; %sFill (reserved) with REGS[SEL+%d]\n", pc, incr, adj)
+					pc++
+				}
+				src = src[1:]
+				if src, retErr = decodeExtraData(dst, p, src); retErr != nil {
+					return retErr
+				}
+				if dst != nil {
+					dst.ClosePathFill()
+				}
+			}
 
-	case opcode == 0xe7:
-		if p != nil {
-			p(src[:1], "h (relative horizontal lineTo)\n")
+		default:
+			if src, retErr = decodeReservedOpcodes(dst, p, src); retErr != nil {
+				return retErr
+			}
+			pc++
 		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:1], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.RelHLineTo(coords[0])
-		}
-
-	case opcode == 0xe8:
-		if p != nil {
-			p(src[:1], "V (absolute vertical lineTo)\n")
-		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:1], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.AbsVLineTo(coords[0])
-		}
-
-	case opcode == 0xe9:
-		if p != nil {
-			p(src[:1], "v (relative vertical lineTo)\n")
-		}
-		src = src[1:]
-		err := error(nil)
-		src, err = decodeCoordinates(coords[:1], p, src)
-		if err != nil {
-			return nil, nil, err
-		}
-		if dst != nil {
-			dst.RelVLineTo(coords[0])
-		}
-
-	default:
-		return nil, nil, errUnsupportedDrawingOpcode
 	}
-	return decodeDrawing, src, nil
+	return nil
 }
 
-type decodeNumberFunc func(buffer) (float32, int)
-
-func decodeNumber(p printer, src buffer, dnf decodeNumberFunc) (float32, buffer, error) {
-	x, n := dnf(src)
-	if n == 0 {
-		return 0, nil, errInvalidNumber
+func oneByteColorString(x byte) string {
+	c := decodeColor1(x)
+	switch c.typ {
+	case colorTypePaletteIndex:
+		return fmt.Sprintf("CPAL[%d]", c.paletteIndex())
+	case colorTypeCReg:
+		return fmt.Sprintf("REGS[INDEX+%d]", c.cReg())
 	}
-	if p != nil {
-		p(src[:n], "    %+g\n", x)
-	}
-	return x, src[n:], nil
+	rgba := c.rgba()
+	return fmt.Sprintf("rgba(%02X:%02X:%02X:%02X)", rgba.R, rgba.G, rgba.B, rgba.A)
 }
 
-func decodeCoordinates(coords []float32, p printer, src buffer) (src1 buffer, retErr error) {
-	for i := range coords {
+func decodeLineQuadCubeTo(dst Destination, p printer, src buffer, pc uint32, opcode byte, curr *[2]float32) (buffer, error) {
+	coords := [6]float32{}
+
+	op, nCoords := "", 0
+	switch opcode >> 4 {
+	case 0:
+		op = "LineTo"
+		nCoords = 2
+	case 1:
+		op = "QuadTo"
+		nCoords = 4
+	case 2:
+		op = "CubeTo"
+		nCoords = 6
+	}
+
+	nReps := uint32(opcode & 0x0f)
+	if nReps > 0 {
+		if p != nil {
+			p(src[:1], "#%04d %s (%d reps)\n", pc, op, nReps)
+		}
+		src = src[1:]
+	} else {
+		if p != nil {
+			p(src[:1], "#%04d %s...\n", pc, op)
+		}
+		src = src[1:]
+		n := 0
+		nReps, n = src.decodeNatural()
+		if n == 0 {
+			return nil, errInvalidNumber
+		}
+		nReps += 16
+		if p != nil {
+			p(src[:n], "      ...(%d reps)\n", nReps)
+		}
+		src = src[n:]
+	}
+
+	for i := uint32(0); i < nReps; i++ {
+		if p != nil && i != 0 {
+			p(nil, "      (rep)\n")
+		}
 		err := error(nil)
-		coords[i], src, err = decodeNumber(p, src, buffer.decodeCoordinate)
+		src, err = decodeCoordinates(coords[6-nCoords:6], p, src)
 		if err != nil {
 			return nil, err
 		}
+		if dst != nil {
+			switch op[0] {
+			case 'L':
+				dst.LineTo(coords[4], coords[5])
+			case 'Q':
+				dst.QuadTo(coords[2], coords[3], coords[4], coords[5])
+			case 'C':
+				dst.CubeTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5])
+			}
+		}
+		curr[0], curr[1] = coords[4], coords[5]
 	}
 	return src, nil
 }
 
-func decodeAngle(p printer, src buffer) (float32, buffer, error) {
-	x, n := src.decodeZeroToOne()
-	if n == 0 {
-		return 0, nil, errInvalidNumber
+func decodeCoordinates(coords []float32, p printer, src buffer) (src1 buffer, retErr error) {
+	for i := range coords {
+		x, n := src.decodeCoordinate()
+		if n == 0 {
+			return nil, errInvalidNumber
+		}
+		if p != nil {
+			p(src[:n], "      %+g\n", x)
+		}
+		src = src[n:]
+		coords[i] = x
 	}
-	if p != nil {
-		p(src[:n], "    %v × 360 degrees (%v degrees)\n", x, x*360)
-	}
-	return x, src[n:], nil
+	return src, nil
 }
 
-func decodeArcToFlags(p printer, src buffer) (bool, bool, buffer, error) {
-	x, n := src.decodeNatural()
-	if n == 0 {
-		return false, false, nil, errInvalidNumber
+func decodeSetRegLo32(dst Destination, p printer, src buffer) (buffer, error) {
+	if len(src) < 4 {
+		return nil, errInvalidNumber
 	}
 	if p != nil {
-		p(src[:n], "    %#x (largeArc=%d, sweep=%d)\n", x, (x>>0)&0x01, (x>>1)&0x01)
+		p(src[:4], "      lo32 = 0x%02X%02X_%02X%02X\n",
+			src[3], src[2], src[1], src[0])
 	}
-	return (x>>0)&0x01 != 0, (x>>1)&0x01 != 0, src[n:], nil
+	if dst != nil {
+		// TODO: set register state.
+	}
+	return src[4:], nil
+}
+
+func decodeSetRegHi32(dst Destination, p printer, src buffer) (buffer, error) {
+	if len(src) < 4 {
+		return nil, errInvalidColor
+	}
+	cr := src[0]
+	cg := src[1]
+	cb := src[2]
+	ca := src[3]
+	if p != nil {
+		if (cr <= ca) && (cg <= ca) && (cb <= ca) {
+			p(src[:4], "      hi32 = rgba(%02X:%02X:%02X:%02X)\n", cr, cg, cb, ca)
+		} else {
+			if (src[0] == 0x00) || (src[1] == src[2]) {
+				p(src[:4], "      hi32 = %s\n", oneByteColorString(src[1]))
+			} else if src[0] == 0xFF {
+				p(src[:4], "      hi32 = %s\n", oneByteColorString(src[2]))
+			} else {
+				p(src[:4], "      hi32 = blend(0x%02X * %s, 0x%02X * %s)\n",
+					0xFF-src[0], oneByteColorString(src[1]),
+					0x00+src[0], oneByteColorString(src[2]))
+			}
+		}
+	}
+	if dst != nil {
+		// TODO: set register state.
+	}
+	return src[4:], nil
+}
+
+func decodeReservedOpcodes(dst Destination, p printer, src buffer) (src1 buffer, retErr error) {
+	lineTo, fallback := src[0] < 0xE0, "NOP"
+	if lineTo {
+		fallback = "LineTo"
+	}
+	if p != nil {
+		p(src[:1], "Reserved (%s)\n", fallback)
+	}
+	src = src[1:]
+
+	if src, retErr = decodeExtraData(dst, p, src); retErr != nil {
+		return nil, retErr
+	}
+
+	if lineTo {
+		coords := [2]float32{}
+		if src, retErr = decodeCoordinates(coords[:2], p, src); retErr != nil {
+			return nil, retErr
+		}
+		if dst != nil {
+			dst.LineTo(coords[0], coords[1])
+		}
+	}
+
+	return src, nil
+}
+
+func decodeExtraData(dst Destination, p printer, src buffer) (src1 buffer, retErr error) {
+	length, n := src.decodeNatural()
+	if n == 0 {
+		return nil, errInvalidNumber
+	}
+	if p != nil {
+		p(src[:n], "      Extra data length: %d\n", length)
+	}
+	src = src[n:]
+
+	if len(src) < int(length) {
+		return nil, errInvalidExtraDataLength
+	}
+	extra, src := src[:length], src[length:]
+	if p != nil {
+		for ; len(extra) > 4; extra = extra[4:] {
+			p(extra[:4], "      ???\n")
+		}
+		if len(extra) > 0 {
+			p(extra, "      ???\n")
+		}
+	}
+	return src, nil
 }
