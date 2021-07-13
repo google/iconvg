@@ -1,0 +1,100 @@
+8a 49 56 47   IconVG Magic Identifier
+01            Number of metadata chunks: 0
+35            #0000 ClosePath; MoveTo
+45                  -30
+45                  -30
+34            #0001 Parallelogram
+bd                  +30
+45                  -30
+bd                  +30
+5d                  -18
+72            #0002 SEL -= 4; Set REGS[SEL+1 .. SEL+5]
+00 00 00 00         lo32 = 0x0000_0000
+ff 00 00 ff         hi32 = rgba(FF:00:00:FF)
+00 40 00 00         lo32 = 0x0000_4000
+00 ff 00 ff         hi32 = rgba(00:FF:00:FF)
+00 80 00 00         lo32 = 0x0000_8000
+00 00 ff ff         hi32 = rgba(00:00:FF:FF)
+00 00 01 00         lo32 = 0x0001_0000
+00 00 00 ff         hi32 = rgba(00:00:00:FF)
+91 02         #0003 ClosePath; Fill (linear gradient; none) with REGS[SEL+1 .. SEL+5]
+88 88 08 3d         +0.03333333
+88 88 88 3c         +0.016666666
+68 66 66 3f         +0.9000001
+36 04         #0004 SEL += 4
+35            #0005 ClosePath; MoveTo
+45                  -30
+65                  -14
+34            #0006 Parallelogram
+bd                  +30
+65                  -14
+bd                  +30
+7d                  -2
+73            #0007 SEL -= 5; Set REGS[SEL+1 .. SEL+6]
+00 00 00 00         lo32 = 0x0000_0000
+00 ff ff ff         hi32 = rgba(00:FF:FF:FF)
+00 40 00 00         lo32 = 0x0000_4000
+ff ff ff ff         hi32 = rgba(FF:FF:FF:FF)
+00 80 00 00         lo32 = 0x0000_8000
+ff 00 ff ff         hi32 = rgba(FF:00:FF:FF)
+00 c0 00 00         lo32 = 0x0000_C000
+00 00 00 00         hi32 = rgba(00:00:00:00)
+00 00 01 00         lo32 = 0x0001_0000
+ff ff 00 ff         hi32 = rgba(FF:FF:00:FF)
+91 43         #0008 ClosePath; Fill (linear gradient; pad) with REGS[SEL+1 .. SEL+6]
+88 88 08 3d         +0.03333333
+88 88 88 3c         +0.016666666
+24 22 22 3f         +0.63333344
+36 05         #0009 SEL += 5
+35            #0010 ClosePath; MoveTo
+45                  -30
+85                  +2
+34            #0011 Parallelogram
+bd                  +30
+85                  +2
+bd                  +30
+9d                  +14
+72            #0012 SEL -= 4; Set REGS[SEL+1 .. SEL+5]
+00 00 00 00         lo32 = 0x0000_0000
+ff 00 00 ff         hi32 = rgba(FF:00:00:FF)
+00 40 00 00         lo32 = 0x0000_4000
+00 ff 00 ff         hi32 = rgba(00:FF:00:FF)
+00 80 00 00         lo32 = 0x0000_8000
+00 00 ff ff         hi32 = rgba(00:00:FF:FF)
+00 00 01 00         lo32 = 0x0001_0000
+00 00 00 ff         hi32 = rgba(00:00:00:FF)
+a1 82         #0013 ClosePath; Fill (radial gradient; reflect) with REGS[SEL+1 .. SEL+5]
+00 00 80 3d         +0.0625
+00 00 00 00         +0
+00 00 00 3f         +0.5
+00 00 00 00         +0
+00 00 80 3d         +0.0625
+00 00 00 bf         -0.5
+36 04         #0014 SEL += 4
+35            #0015 ClosePath; MoveTo
+45                  -30
+a5                  +18
+34            #0016 Parallelogram
+bd                  +30
+a5                  +18
+bd                  +30
+bd                  +30
+73            #0017 SEL -= 5; Set REGS[SEL+1 .. SEL+6]
+00 00 00 00         lo32 = 0x0000_0000
+00 ff ff ff         hi32 = rgba(00:FF:FF:FF)
+00 40 00 00         lo32 = 0x0000_4000
+ff ff ff ff         hi32 = rgba(FF:FF:FF:FF)
+00 80 00 00         lo32 = 0x0000_8000
+ff 00 ff ff         hi32 = rgba(FF:00:FF:FF)
+00 c0 00 00         lo32 = 0x0000_C000
+00 00 00 00         hi32 = rgba(00:00:00:00)
+00 00 01 00         lo32 = 0x0001_0000
+ff ff 00 ff         hi32 = rgba(FF:FF:00:FF)
+a1 c3         #0018 ClosePath; Fill (radial gradient; repeat) with REGS[SEL+1 .. SEL+6]
+00 00 80 3d         +0.0625
+00 00 00 00         +0
+00 00 00 3f         +0.5
+00 00 00 00         +0
+00 00 80 3d         +0.0625
+00 00 c0 bf         -1.5
+36 05         #0019 SEL += 5

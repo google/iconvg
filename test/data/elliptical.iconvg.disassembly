@@ -1,0 +1,52 @@
+8a 49 56 47   IconVG Magic Identifier
+01            Number of metadata chunks: 0
+35            #0000 ClosePath; MoveTo
+41                  -32
+41                  -32
+34            #0001 Parallelogram
+c1                  +32
+41                  -32
+c1                  +32
+c1                  +32
+70            #0002 SEL -= 2; Set REGS[SEL+1 .. SEL+3]
+00 00 00 00         lo32 = 0x0000_0000
+c0 00 00 ff         hi32 = rgba(C0:00:00:FF)
+00 00 01 00         lo32 = 0x0001_0000
+00 00 c0 ff         hi32 = rgba(00:00:C0:FF)
+a1 80         #0003 ClosePath; Fill (radial gradient; reflect) with REGS[SEL+1 .. SEL+3]
+ac aa aa bc         -0.020833336
+ab aa 2a 3d         +0.041666668
+00 00 00 00         +0
+88 88 08 3d         +0.03333333
+00 00 00 00         +0
+ab aa 2a 3f         +0.6666667
+36 02         #0004 SEL += 2
+35            #0005 ClosePath; MoveTo
+57                  -21
+6d                  -10
+34            #0006 Parallelogram
+59                  -20
+6b                  -11
+5b                  -19
+6d                  -10
+57            #0007 Set REGS[SEL+7].hi32
+ff ff ff ff         hi32 = rgba(FF:FF:FF:FF)
+87            #0008 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0009 ClosePath; MoveTo
+57                  -21
+9d                  +14
+34            #0010 Parallelogram
+59                  -20
+9b                  +13
+5b                  -19
+9d                  +14
+87            #0011 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0012 ClosePath; MoveTo
+93                  +9
+8b                  +5
+34            #0013 Parallelogram
+95                  +10
+89                  +4
+97                  +11
+8b                  +5
+87            #0014 ClosePath; Fill (flat color) with REGS[SEL+7]

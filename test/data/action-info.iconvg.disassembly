@@ -1,0 +1,33 @@
+8a 49 56 47   IconVG Magic Identifier
+03            Number of metadata chunks: 1
+0b            Metadata chunk length: 5
+11            Metadata Identifier: 8 (viewBox)
+51                  -24
+51                  -24
+b1                  +24
+b1                  +24
+35            #0000 ClosePath; MoveTo
+81                  +0
+59                  -20
+33            #0001 Ellipse (4 quarters)
+59                  -20
+81                  +0
+81                  +0
+a9                  +20
+35            #0002 ClosePath; MoveTo
+85                  +2
+95                  +10
+34            #0003 Parallelogram
+7d                  -2
+95                  +10
+7d                  -2
+7d                  -2
+35            #0004 ClosePath; MoveTo
+85                  +2
+75                  -6
+34            #0005 Parallelogram
+7d                  -2
+75                  -6
+7d                  -2
+6d                  -10
+88            #0006 ClosePath; Fill (flat color) with REGS[SEL+8]

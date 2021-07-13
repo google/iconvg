@@ -1,0 +1,379 @@
+8a 49 56 47   IconVG Magic Identifier
+03            Number of metadata chunks: 1
+0b            Metadata chunk length: 5
+11            Metadata Identifier: 8 (viewBox)
+41                  -32
+51                  -24
+c1                  +32
+b1                  +24
+35            #0000 ClosePath; MoveTo
+41                  -32
+51                  -24
+34            #0001 Parallelogram
+c1                  +32
+51                  -24
+c1                  +32
+b1                  +24
+57            #0002 Set REGS[SEL+7].hi32
+7c 7e 7c ff         hi32 = rgba(7C:7E:7C:FF)
+87            #0003 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0004 ClosePath; MoveTo
+a2 88               +8.625
+e2 9b               +27.875
+02            #0005 LineTo (2 reps)
+e2 a3               +35.875
+a2 96               +22.625
+                    (rep)
+e2 90               +16.875
+22 64               -27.875
+57            #0006 Set REGS[SEL+7].hi32
+0b 03 02 80         hi32 = rgba(0B:03:02:80)
+87            #0007 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0008 ClosePath; MoveTo
+22 5c               -35.875
+e2 94               +20.875
+02            #0009 LineTo (2 reps)
+22 83               +3.125
+62 65               -26.625
+                    (rep)
+22 64               -27.875
+22 66               -25.875
+57            #0010 Set REGS[SEL+7].hi32
+74 7a 7c 80         hi32 = rgba(74:7A:7C:80)
+87            #0011 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0012 ClosePath; MoveTo
+62 78               -7.625
+22 80               +0.125
+02            #0013 LineTo (2 reps)
+62 97               +23.375
+62 6d               -18.625
+                    (rep)
+a2 95               +21.625
+e2 83               +3.875
+57            #0014 Set REGS[SEL+7].hi32
+00 02 13 80         hi32 = rgba(00:02:13:80)
+87            #0015 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0016 ClosePath; MoveTo
+a2 a1               +33.625
+a2 66               -25.375
+02            #0017 LineTo (2 reps)
+e2 a3               +35.875
+22 82               +2.125
+                    (rep)
+22 89               +9.125
+22 64               -27.875
+57            #0018 Set REGS[SEL+7].hi32
+44 6c 80 80         hi32 = rgba(44:6C:80:80)
+87            #0019 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0020 ClosePath; MoveTo
+22 93               +19.125
+22 82               +2.125
+02            #0021 LineTo (2 reps)
+22 89               +9.125
+e2 9b               +27.875
+                    (rep)
+e2 6e               -17.125
+22 82               +2.125
+57            #0022 Set REGS[SEL+7].hi32
+4a 5e 62 80         hi32 = rgba(4A:5E:62:80)
+87            #0023 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0024 ClosePath; MoveTo
+22 5c               -35.875
+22 71               -14.875
+02            #0025 LineTo (2 reps)
+e2 7e               -1.125
+e2 98               +24.875
+                    (rep)
+22 5c               -35.875
+a2 98               +24.625
+57            #0026 Set REGS[SEL+7].hi32
+6a 40 1e 80         hi32 = rgba(6A:40:1E:80)
+87            #0027 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0028 ClosePath; MoveTo
+22 89               +9.125
+e2 6c               -19.125
+02            #0029 LineTo (2 reps)
+e2 77               -8.125
+62 7b               -4.625
+                    (rep)
+a2 82               +2.625
+62 6b               -20.625
+57            #0030 Set REGS[SEL+7].hi32
+00 00 00 80         hi32 = rgba(00:00:00:80)
+87            #0031 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0032 ClosePath; MoveTo
+a2 6c               -19.375
+e2 8b               +11.875
+02            #0033 LineTo (2 reps)
+e2 7c               -3.125
+62 96               +22.375
+                    (rep)
+22 5f               -32.875
+62 91               +17.375
+57            #0034 Set REGS[SEL+7].hi32
+1c 08 0c 80         hi32 = rgba(1C:08:0C:80)
+87            #0035 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0036 ClosePath; MoveTo
+a2 75               -10.375
+62 83               +3.375
+02            #0037 LineTo (2 reps)
+62 6d               -18.625
+22 7b               -4.875
+                    (rep)
+a2 76               -9.375
+22 6e               -17.875
+57            #0038 Set REGS[SEL+7].hi32
+00 1e 40 80         hi32 = rgba(00:1E:40:80)
+87            #0039 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0040 ClosePath; MoveTo
+e2 67               -24.125
+62 90               +16.375
+02            #0041 LineTo (2 reps)
+22 74               -11.875
+62 82               +2.375
+                    (rep)
+22 5c               -35.875
+22 6f               -16.875
+57            #0042 Set REGS[SEL+7].hi32
+7e 63 4e 80         hi32 = rgba(7E:63:4E:80)
+87            #0043 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0044 ClosePath; MoveTo
+62 92               +18.375
+62 66               -25.625
+02            #0045 LineTo (2 reps)
+e2 67               -24.125
+22 64               -27.875
+                    (rep)
+a2 60               -31.375
+22 77               -8.875
+57            #0046 Set REGS[SEL+7].hi32
+4f 6e 80 80         hi32 = rgba(4F:6E:80:80)
+87            #0047 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0048 ClosePath; MoveTo
+22 81               +1.125
+62 7d               -2.625
+02            #0049 LineTo (2 reps)
+22 9c               +28.125
+e2 66               -25.125
+                    (rep)
+62 8b               +11.375
+a2 88               +8.625
+57            #0050 Set REGS[SEL+7].hi32
+00 10 1c 80         hi32 = rgba(00:10:1C:80)
+87            #0051 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0052 ClosePath; MoveTo
+62 90               +16.375
+e2 87               +7.875
+02            #0053 LineTo (2 reps)
+e2 99               +25.875
+a2 7f               -0.375
+                    (rep)
+a2 9e               +30.625
+22 87               +7.125
+57            #0054 Set REGS[SEL+7].hi32
+7e 5e 47 80         hi32 = rgba(7E:5E:47:80)
+87            #0055 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0056 ClosePath; MoveTo
+e2 9e               +30.875
+e2 9b               +27.875
+02            #0057 LineTo (2 reps)
+62 9b               +27.375
+e2 7c               -3.125
+                    (rep)
+e2 a3               +35.875
+62 80               +0.375
+57            #0058 Set REGS[SEL+7].hi32
+21 03 00 80         hi32 = rgba(21:03:00:80)
+87            #0059 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0060 ClosePath; MoveTo
+62 7d               -2.625
+a2 89               +9.625
+02            #0061 LineTo (2 reps)
+22 76               -9.875
+62 94               +20.375
+                    (rep)
+a2 76               -9.375
+22 6f               -16.875
+57            #0062 Set REGS[SEL+7].hi32
+40 5f 77 80         hi32 = rgba(40:5F:77:80)
+87            #0063 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0064 ClosePath; MoveTo
+e2 7f               -0.125
+a2 71               -14.375
+02            #0065 LineTo (2 reps)
+22 8b               +11.125
+22 79               -6.875
+                    (rep)
+e2 97               +23.875
+e2 75               -10.125
+57            #0066 Set REGS[SEL+7].hi32
+00 00 00 80         hi32 = rgba(00:00:00:80)
+87            #0067 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0068 ClosePath; MoveTo
+62 92               +18.375
+22 9b               +27.125
+02            #0069 LineTo (2 reps)
+62 88               +8.375
+62 81               +1.375
+                    (rep)
+e2 a3               +35.875
+22 98               +24.125
+57            #0070 Set REGS[SEL+7].hi32
+0c 07 0b 80         hi32 = rgba(0C:07:0B:80)
+87            #0071 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0072 ClosePath; MoveTo
+62 92               +18.375
+22 91               +17.125
+02            #0073 LineTo (2 reps)
+a2 98               +24.625
+62 8b               +11.375
+                    (rep)
+62 a1               +33.375
+22 8e               +14.125
+57            #0074 Set REGS[SEL+7].hi32
+7b 55 38 80         hi32 = rgba(7B:55:38:80)
+87            #0075 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0076 ClosePath; MoveTo
+22 5c               -35.875
+a2 67               -24.375
+02            #0077 LineTo (2 reps)
+62 67               -24.625
+22 64               -27.875
+                    (rep)
+a2 5e               -33.375
+a2 76               -9.375
+57            #0078 Set REGS[SEL+7].hi32
+70 1b 00 80         hi32 = rgba(70:1B:00:80)
+87            #0079 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0080 ClosePath; MoveTo
+a2 84               +4.625
+62 73               -12.625
+02            #0081 LineTo (2 reps)
+a2 7d               -2.375
+e2 7a               -5.125
+                    (rep)
+22 85               +5.125
+22 7b               -4.875
+57            #0082 Set REGS[SEL+7].hi32
+80 72 5d 80         hi32 = rgba(80:72:5D:80)
+87            #0083 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0084 ClosePath; MoveTo
+a2 7d               -2.375
+22 73               -12.875
+02            #0085 LineTo (2 reps)
+e2 7a               -5.125
+62 83               +3.375
+                    (rep)
+22 79               -6.875
+e2 74               -11.125
+57            #0086 Set REGS[SEL+7].hi32
+00 00 09 80         hi32 = rgba(00:00:09:80)
+87            #0087 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0088 ClosePath; MoveTo
+e2 a3               +35.875
+62 72               -13.625
+02            #0089 LineTo (2 reps)
+62 9f               +31.375
+22 64               -27.875
+                    (rep)
+e2 94               +20.875
+62 7e               -1.625
+57            #0090 Set REGS[SEL+7].hi32
+5e 6a 72 80         hi32 = rgba(5E:6A:72:80)
+87            #0091 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0092 ClosePath; MoveTo
+e2 75               -10.125
+e2 87               +7.875
+02            #0093 LineTo (2 reps)
+e2 74               -11.125
+a2 8d               +13.625
+                    (rep)
+e2 6d               -18.125
+e2 83               +3.875
+57            #0094 Set REGS[SEL+7].hi32
+29 00 00 80         hi32 = rgba(29:00:00:80)
+87            #0095 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0096 ClosePath; MoveTo
+22 7f               -0.875
+62 96               +22.375
+02            #0097 LineTo (2 reps)
+e2 81               +1.875
+e2 9b               +27.875
+                    (rep)
+a2 90               +16.625
+22 94               +20.125
+57            #0098 Set REGS[SEL+7].hi32
+00 59 50 80         hi32 = rgba(00:59:50:80)
+87            #0099 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0100 ClosePath; MoveTo
+e2 6e               -17.125
+e2 8d               +13.875
+02            #0101 LineTo (2 reps)
+62 68               -23.625
+22 87               +7.125
+                    (rep)
+22 6d               -18.875
+62 92               +18.375
+57            #0102 Set REGS[SEL+7].hi32
+11 00 00 80         hi32 = rgba(11:00:00:80)
+87            #0103 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0104 ClosePath; MoveTo
+62 85               +5.375
+a2 72               -13.375
+02            #0105 LineTo (2 reps)
+e2 8d               +13.875
+22 64               -27.875
+                    (rep)
+a2 8c               +12.625
+e2 73               -12.125
+57            #0106 Set REGS[SEL+7].hi32
+5f 65 65 80         hi32 = rgba(5F:65:65:80)
+87            #0107 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0108 ClosePath; MoveTo
+e2 94               +20.875
+e2 85               +5.875
+02            #0109 LineTo (2 reps)
+22 8e               +14.125
+22 81               +1.125
+                    (rep)
+a2 8d               +13.625
+22 87               +7.125
+57            #0110 Set REGS[SEL+7].hi32
+80 6a 58 80         hi32 = rgba(80:6A:58:80)
+87            #0111 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0112 ClosePath; MoveTo
+62 72               -13.625
+e2 9b               +27.875
+02            #0113 LineTo (2 reps)
+22 83               +3.125
+22 95               +21.125
+                    (rep)
+e2 5c               -35.125
+e2 96               +22.875
+57            #0114 Set REGS[SEL+7].hi32
+80 70 1c 80         hi32 = rgba(80:70:1C:80)
+87            #0115 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0116 ClosePath; MoveTo
+a2 7e               -1.375
+62 95               +21.375
+02            #0117 LineTo (2 reps)
+22 92               +18.125
+a2 95               +21.625
+                    (rep)
+62 77               -8.625
+a2 7c               -3.375
+57            #0118 Set REGS[SEL+7].hi32
+53 58 56 80         hi32 = rgba(53:58:56:80)
+87            #0119 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0120 ClosePath; MoveTo
+e2 a3               +35.875
+22 92               +18.125
+02            #0121 LineTo (2 reps)
+a2 8a               +10.625
+62 96               +22.375
+                    (rep)
+62 97               +23.375
+e2 9b               +27.875
+57            #0122 Set REGS[SEL+7].hi32
+00 00 00 80         hi32 = rgba(00:00:00:80)
+87            #0123 ClosePath; Fill (flat color) with REGS[SEL+7]

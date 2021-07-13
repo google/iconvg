@@ -1,0 +1,202 @@
+8a 49 56 47   IconVG Magic Identifier
+01            Number of metadata chunks: 0
+35            #0000 ClosePath; MoveTo
+6d                  -10
+81                  +0
+01            #0001 LineTo (1 reps)
+4f                  -25
+81                  +0
+23            #0002 CubeTo (3 reps)
+4f                  -25
+4a 88               +8.28125
+ba 6d               -18.28125
+9f                  +15
+6d                  -10
+9f                  +15
+                    (rep)
+4a 7e               -1.71875
+9f                  +15
+8b                  +5
+4a 88               +8.28125
+8b                  +5
+81                  +0
+                    (rep)
+8b                  +5
+ba 77               -8.28125
+4a 7e               -1.71875
+63                  -15
+6d                  -10
+63                  -15
+57            #0003 Set REGS[SEL+7].hi32
+ff 00 00 ff         hi32 = rgba(FF:00:00:FF)
+87            #0004 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0005 ClosePath; MoveTo
+65                  -14
+79                  -4
+01            #0006 LineTo (1 reps)
+65                  -14
+5b                  -19
+21            #0007 CubeTo (1 reps)
+ba 69               -22.28125
+5b                  -19
+47                  -29
+ba 73               -12.28125
+47                  -29
+79                  -4
+57            #0008 Set REGS[SEL+7].hi32
+ff ff 00 ff         hi32 = rgba(FF:FF:00:FF)
+87            #0009 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0010 ClosePath; MoveTo
+63                  -15
+bd                  +30
+01            #0011 LineTo (1 reps)
+6d                  -10
+82 9b               +27.5
+22            #0012 CubeTo (2 reps)
+52 75               -10.6875
+22 9a               +26.125
+e2 75               -10.125
+72 98               +24.4375
+42 77               -8.75
+c2 97               +23.75
+                    (rep)
+a2 78               -7.375
+12 97               +23.0625
+52 7a               -5.6875
+a2 97               +23.625
+77                  -5
+b3                  +25
+01            #0013 LineTo (1 reps)
+81                  +0
+82 96               +22.5
+22            #0014 CubeTo (2 reps)
+82 7e               -1.5
+d2 93               +19.8125
+6a 7e               -1.59375
+12 91               +17.0625
+ca 7f               -0.21875
+62 90               +16.375
+                    (rep)
+2a 81               +1.15625
+b2 8f               +15.6875
+82 83               +3.5
+52 91               +17.3125
+8b                  +5
+a9                  +20
+01            #0015 LineTo (1 reps)
+95                  +10
+82 91               +17.5
+22            #0016 CubeTo (2 reps)
+ba 87               +7.71875
+7e 8d               +13.484375
+fe 86               +6.984375
+aa 89               +9.65625
+5e 88               +8.359375
+fa 88               +8.96875
+                    (rep)
+c2 89               +9.75
+4a 88               +8.28125
+ba 8c               +12.71875
+fe 8a               +10.984375
+9f                  +15
+9f                  +15
+01            #0017 LineTo (1 reps)
+a9                  +20
+82 8c               +12.5
+22            #0018 CubeTo (2 reps)
+f2 90               +16.9375
+2a 87               +7.15625
+96 8f               +15.578125
+42 82               +2.25
+f6 90               +16.953125
+92 81               +1.5625
+                    (rep)
+5a 92               +18.34375
+e2 80               +0.875
+f2 95               +21.9375
+aa 84               +4.65625
+b3                  +25
+95                  +10
+02            #0019 LineTo (2 reps)
+bd                  +30
+82 87               +7.5
+                    (rep)
+bd                  +30
+bd                  +30
+57            #0020 Set REGS[SEL+7].hi32
+00 00 00 ff         hi32 = rgba(00:00:00:FF)
+87            #0021 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0022 ClosePath; MoveTo
+95                  +10
+49                  -28
+21            #0023 CubeTo (1 reps)
+95                  +10
+aa 65               -26.34375
+b2 8c               +12.6875
+4f                  -25
+a1                  +16
+4f                  -25
+57            #0024 Set REGS[SEL+7].hi32
+00 00 80 ff         hi32 = rgba(00:00:80:FF)
+87            #0025 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0026 ClosePath; MoveTo
+a5                  +18
+49                  -28
+21            #0027 CubeTo (1 reps)
+52 95               +21.3125
+49                  -28
+b1                  +24
+5a 65               -26.65625
+b1                  +24
+4f                  -25
+87            #0028 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0029 ClosePath; MoveTo
+95                  +10
+59                  -20
+23            #0030 CubeTo (3 reps)
+b2 86               +6.6875
+59                  -20
+89                  +4
+5a 6d               -18.65625
+89                  +4
+5f                  -17
+                    (rep)
+89                  +4
+aa 70               -15.34375
+b2 86               +6.6875
+65                  -14
+95                  +10
+65                  -14
+                    (rep)
+52 8d               +13.3125
+65                  -14
+a1                  +16
+aa 70               -15.34375
+a1                  +16
+5f                  -17
+87            #0031 ClosePath; Fill (flat color) with REGS[SEL+7]
+35            #0032 ClosePath; MoveTo
+a5                  +18
+59                  -20
+23            #0033 CubeTo (3 reps)
+a5                  +18
+5a 6a               -21.65625
+b2 94               +20.6875
+53                  -23
+b1                  +24
+53                  -23
+                    (rep)
+52 9b               +27.3125
+53                  -23
+bd                  +30
+5a 6a               -21.65625
+bd                  +30
+59                  -20
+                    (rep)
+bd                  +30
+aa 6d               -18.34375
+52 9b               +27.3125
+5f                  -17
+b1                  +24
+5f                  -17
+87            #0034 ClosePath; Fill (flat color) with REGS[SEL+7]

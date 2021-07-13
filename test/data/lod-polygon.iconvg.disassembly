@@ -1,0 +1,56 @@
+8a 49 56 47   IconVG Magic Identifier
+01            Number of metadata chunks: 0
+35            #0000 ClosePath; MoveTo
+49                  -28
+59                  -20
+02            #0001 LineTo (2 reps)
+49                  -28
+49                  -28
+                    (rep)
+59                  -20
+49                  -28
+88            #0002 ClosePath; Fill (flat color) with REGS[SEL+8]
+3a            #0003 Jump Level-of-Detail
+07                  Target: #0007 (PC+3)
+81                  +0
+02 d0               +80
+35            #0004 ClosePath; MoveTo
+b9                  +28
+81                  +0
+02            #0005 LineTo (2 reps)
+65                  -14
+42 98               +24.25
+                    (rep)
+65                  -14
+c2 67               -24.25
+88            #0006 ClosePath; Fill (flat color) with REGS[SEL+8]
+3a            #0007 Jump Level-of-Detail
+07                  Target: #0011 (PC+3)
+02 d0               +80
+00 00 80 7f         +Inf
+35            #0008 ClosePath; MoveTo
+b9                  +28
+81                  +0
+04            #0009 LineTo (4 reps)
+aa 88               +8.65625
+a2 9a               +26.625
+                    (rep)
+5a 69               -22.65625
+76 90               +16.453125
+                    (rep)
+5a 69               -22.65625
+8e 6f               -16.453125
+                    (rep)
+aa 88               +8.65625
+62 65               -26.625
+88            #0010 ClosePath; Fill (flat color) with REGS[SEL+8]
+35            #0011 ClosePath; MoveTo
+b9                  +28
+a9                  +20
+02            #0012 LineTo (2 reps)
+b9                  +28
+b9                  +28
+                    (rep)
+a9                  +20
+b9                  +28
+88            #0013 ClosePath; Fill (flat color) with REGS[SEL+8]
