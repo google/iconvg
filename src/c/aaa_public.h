@@ -81,27 +81,24 @@
 // system_failure_etc indicates a system or resource issue, such as running out
 // of memory or file descriptors.
 //
-// Other errors (invalid_etc, null_etc, unsupported_etc) are programming errors
-// instead of file format errors.
+// Other errors (invalid_etc) are programming errors.
 
-extern const char iconvg_error_bad_color[];                       // ¶0.1
 extern const char iconvg_error_bad_coordinate[];                  // ¶0.1
-extern const char iconvg_error_bad_drawing_opcode[];              // ¶0.1
+extern const char iconvg_error_bad_jump[];                        // ¶0.1
 extern const char iconvg_error_bad_magic_identifier[];            // ¶0.1
 extern const char iconvg_error_bad_metadata[];                    // ¶0.1
 extern const char iconvg_error_bad_metadata_id_order[];           // ¶0.1
 extern const char iconvg_error_bad_metadata_suggested_palette[];  // ¶0.1
 extern const char iconvg_error_bad_metadata_viewbox[];            // ¶0.1
 extern const char iconvg_error_bad_number[];                      // ¶0.1
-extern const char iconvg_error_bad_path_unfinished[];             // ¶0.1
-extern const char iconvg_error_bad_styling_opcode[];              // ¶0.1
+extern const char iconvg_error_bad_opcode_length[];               // ¶0.1
 
 extern const char iconvg_error_system_failure_out_of_memory[];  // ¶0.1
 
 extern const char iconvg_error_invalid_backend_not_enabled[];   // ¶0.1
 extern const char iconvg_error_invalid_constructor_argument[];  // ¶0.1
 extern const char iconvg_error_invalid_paint_type[];            // ¶0.1
-extern const char iconvg_error_unsupported_vtable[];            // ¶0.1
+extern const char iconvg_error_invalid_vtable[];                // ¶0.1
 
 // ----
 

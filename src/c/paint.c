@@ -16,48 +16,111 @@
 
 iconvg_paint_type  //
 iconvg_paint__type(const iconvg_paint* self) {
-  if (self) {
-    const uint8_t* rgba = &self->paint_rgba[0];
-    if ((rgba[0] <= rgba[3]) &&  //
-        (rgba[1] <= rgba[3]) &&  //
-        (rgba[2] <= rgba[3])) {
-      return ICONVG_PAINT_TYPE__FLAT_COLOR;
-    } else if ((rgba[3] == 0x00) && (rgba[2] >= 0x80)) {
-      return (rgba[2] & 0x40) ? ICONVG_PAINT_TYPE__RADIAL_GRADIENT
-                              : ICONVG_PAINT_TYPE__LINEAR_GRADIENT;
-    }
-  }
-  return ICONVG_PAINT_TYPE__INVALID;
+  return self ? ((iconvg_paint_type)(self->paint_type))
+              : ICONVG_PAINT_TYPE__INVALID;
 }
 
 // ----
 
 static inline iconvg_nonpremul_color  //
-iconvg_private_flat_color_as_nonpremul_color(const uint8_t* rgba) {
+iconvg_private_flat_color_as_nonpremul_color(uint32_t u) {
+  uint32_t ur = 0xFF & (u >> 0);
+  uint32_t ug = 0xFF & (u >> 8);
+  uint32_t ub = 0xFF & (u >> 16);
+  uint32_t ua = 0xFF & (u >> 24);
   iconvg_nonpremul_color k;
-  if (!rgba || (rgba[3] == 0x00)) {
-    memset(&k.rgba[0], 0, 4);
-  } else if (rgba[3] == 0xFF) {
-    memcpy(&k.rgba[0], rgba, 4);
+  if (ua == 0) {
+    k.rgba[0] = 0;
+    k.rgba[1] = 0;
+    k.rgba[2] = 0;
+    k.rgba[3] = 0;
+  } else if (ua == 0xFF) {
+    k.rgba[0] = (uint8_t)ur;
+    k.rgba[1] = (uint8_t)ug;
+    k.rgba[2] = (uint8_t)ub;
+    k.rgba[3] = (uint8_t)ua;
   } else {
-    uint32_t a = rgba[3];
-    k.rgba[0] = ((uint8_t)(((uint32_t)(rgba[0])) * 0xFF / a));
-    k.rgba[1] = ((uint8_t)(((uint32_t)(rgba[1])) * 0xFF / a));
-    k.rgba[2] = ((uint8_t)(((uint32_t)(rgba[2])) * 0xFF / a));
-    k.rgba[3] = ((uint8_t)a);
+    k.rgba[0] = (uint8_t)((ur * 0xFF) / ua);
+    k.rgba[1] = (uint8_t)((ug * 0xFF) / ua);
+    k.rgba[2] = (uint8_t)((ub * 0xFF) / ua);
+    k.rgba[3] = (uint8_t)(ua);
   }
   return k;
 }
 
 static inline iconvg_premul_color  //
-iconvg_private_flat_color_as_premul_color(const uint8_t* rgba) {
+iconvg_private_flat_color_as_premul_color(uint32_t u) {
   iconvg_premul_color k;
-  if (!rgba) {
-    memset(&k.rgba[0], 0, 4);
-  } else {
-    memcpy(&k.rgba[0], rgba, 4);
-  }
+  k.rgba[0] = (uint8_t)(u >> 0);
+  k.rgba[1] = (uint8_t)(u >> 8);
+  k.rgba[2] = (uint8_t)(u >> 16);
+  k.rgba[3] = (uint8_t)(u >> 24);
   return k;
+}
+
+// ----
+
+static uint32_t  //
+iconvg_private_paint__resolve_nonrecursive(const iconvg_paint* self,
+                                           uint32_t i) {
+  uint32_t u = (uint32_t)(self->regs[i & 63] >> 32);
+  uint32_t ur = 0xFF & (u >> 0);
+  uint32_t ug = 0xFF & (u >> 8);
+  uint32_t ub = 0xFF & (u >> 16);
+  uint32_t ua = 0xFF & (u >> 24);
+  if ((ur <= ua) && (ug <= ua) && (ub <= ua)) {
+    return u;
+  }
+  return 0;
+}
+
+static uint32_t  //
+iconvg_private_paint__one_byte_color(const iconvg_paint* self,
+                                     uint32_t i,
+                                     uint32_t u) {
+  if (u < 0x80) {
+    return iconvg_private_peek_u32le(
+        &iconvg_private_one_byte_colors[4 * ((size_t)u)]);
+  } else if (u < 0xC0) {
+    return iconvg_private_peek_u32le(
+        &self->custom_palette.colors[u & 63].rgba[0]);
+  }
+  return iconvg_private_paint__resolve_nonrecursive(self, i + u);
+}
+
+static uint32_t  //
+iconvg_private_paint__resolve(const iconvg_paint* self, uint32_t i) {
+  uint32_t u = (uint32_t)(self->regs[i & 63] >> 32);
+  uint32_t ur = 0xFF & (u >> 0);
+  uint32_t ug = 0xFF & (u >> 8);
+  uint32_t ub = 0xFF & (u >> 16);
+  uint32_t ua = 0xFF & (u >> 24);
+  if ((ur <= ua) && (ug <= ua) && (ub <= ua)) {
+    return u;
+  } else if (ua != 0) {
+    return 0;
+  }
+
+  uint32_t p_blend = 255 - ur;
+  uint32_t p = iconvg_private_paint__one_byte_color(self, i, ug);
+  uint32_t pr = 0xFF & (p >> 0);
+  uint32_t pg = 0xFF & (p >> 8);
+  uint32_t pb = 0xFF & (p >> 16);
+  uint32_t pa = 0xFF & (p >> 24);
+
+  uint32_t q_blend = ur;
+  uint32_t q = iconvg_private_paint__one_byte_color(self, i, ub);
+  uint32_t qr = 0xFF & (q >> 0);
+  uint32_t qg = 0xFF & (q >> 8);
+  uint32_t qb = 0xFF & (q >> 16);
+  uint32_t qa = 0xFF & (q >> 24);
+
+  ur = ((p_blend * pr) + (q_blend * qr) + 128) / 255;
+  ug = ((p_blend * pg) + (q_blend * qg) + 128) / 255;
+  ub = ((p_blend * pb) + (q_blend * qb) + 128) / 255;
+  ua = ((p_blend * pa) + (q_blend * qa) + 128) / 255;
+
+  return (ur << 0) | (ug << 8) | (ub << 16) | (ua << 24);
 }
 
 // ----
@@ -65,63 +128,52 @@ iconvg_private_flat_color_as_premul_color(const uint8_t* rgba) {
 iconvg_nonpremul_color  //
 iconvg_paint__flat_color_as_nonpremul_color(const iconvg_paint* self) {
   return iconvg_private_flat_color_as_nonpremul_color(
-      self ? &self->paint_rgba[0] : NULL);
+      self ? iconvg_private_paint__resolve(self, self->which_regs) : 0);
 }
 
 iconvg_premul_color  //
 iconvg_paint__flat_color_as_premul_color(const iconvg_paint* self) {
-  return iconvg_private_flat_color_as_premul_color(self ? &self->paint_rgba[0]
-                                                        : NULL);
+  return iconvg_private_flat_color_as_premul_color(
+      self ? iconvg_private_paint__resolve(self, self->which_regs) : 0);
 }
 
 // ----
 
 iconvg_gradient_spread  //
 iconvg_paint__gradient_spread(const iconvg_paint* self) {
-  if (!self) {
-    return ICONVG_GRADIENT_SPREAD__NONE;
-  }
-  return (iconvg_gradient_spread)(self->paint_rgba[1] >> 6);
+  return self ? ((iconvg_gradient_spread)(self->spread)) : 0;
 }
 
 uint32_t  //
 iconvg_paint__gradient_number_of_stops(const iconvg_paint* self) {
-  if (!self) {
-    return 0;
-  }
-  return 0x3F & self->paint_rgba[0];
+  return self ? self->num_stops : 0;
 }
 
 iconvg_nonpremul_color  //
 iconvg_paint__gradient_stop_color_as_nonpremul_color(const iconvg_paint* self,
                                                      uint32_t which_stop) {
-  const uint8_t* rgba = NULL;
-  if (self) {
-    uint32_t cbase = self->paint_rgba[1];
-    rgba = &self->creg.colors[0x3F & (cbase + which_stop)].rgba[0];
-  }
-  return iconvg_private_flat_color_as_nonpremul_color(rgba);
+  uint32_t i = self->which_regs + which_stop;
+  uint32_t u = ((uint32_t)(self->regs[i & 63] >> 32));
+  return iconvg_private_flat_color_as_nonpremul_color(u);
 }
 
 iconvg_premul_color  //
 iconvg_paint__gradient_stop_color_as_premul_color(const iconvg_paint* self,
                                                   uint32_t which_stop) {
-  const uint8_t* rgba = NULL;
-  if (self) {
-    uint32_t cbase = self->paint_rgba[1];
-    rgba = &self->creg.colors[0x3F & (cbase + which_stop)].rgba[0];
-  }
-  return iconvg_private_flat_color_as_premul_color(rgba);
+  uint32_t i = self->which_regs + which_stop;
+  uint32_t u = ((uint32_t)(self->regs[i & 63] >> 32));
+  return iconvg_private_flat_color_as_premul_color(u);
 }
 
 float  //
 iconvg_paint__gradient_stop_offset(const iconvg_paint* self,
                                    uint32_t which_stop) {
   if (!self) {
-    return 0;
+    return 0.0f;
   }
-  uint32_t nbase = self->paint_rgba[2];
-  return self->nreg[0x3F & (nbase + which_stop)];
+  uint32_t i = self->which_regs + which_stop;
+  uint32_t u = ((uint32_t)(self->regs[i & 63]));
+  return (u >= 0x10000) ? 1.0f : (((float)u) / 0x10000);
 }
 
 iconvg_matrix_2x3_f64  //
@@ -130,13 +182,12 @@ iconvg_paint__gradient_transformation_matrix(const iconvg_paint* self) {
     return iconvg_matrix_2x3_f64__make(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
-  uint32_t nbase = self->paint_rgba[2];
-  double s00 = self->nreg[0x3F & (nbase - 6)];
-  double s01 = self->nreg[0x3F & (nbase - 5)];
-  double s02 = self->nreg[0x3F & (nbase - 4)];
-  double s10 = self->nreg[0x3F & (nbase - 3)];
-  double s11 = self->nreg[0x3F & (nbase - 2)];
-  double s12 = self->nreg[0x3F & (nbase - 1)];
+  double s00 = self->transform[0];
+  double s01 = self->transform[1];
+  double s02 = self->transform[2];
+  double s10 = self->transform[3];
+  double s11 = self->transform[4];
+  double s12 = self->transform[5];
 
   // The [s00, s01, s02; s10, s11, s12] matrix transforms from *src*
   // coordinates to pattern coordinates.

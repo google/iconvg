@@ -30,10 +30,6 @@
 
 // ----
 
-extern const char iconvg_private_internal_error_unreachable[];
-
-// ----
-
 static inline uint16_t  //
 iconvg_private_peek_u16le(const uint8_t* p) {
   return (uint16_t)(((uint16_t)(p[0]) << 0) | ((uint16_t)(p[1]) << 8));
@@ -43,6 +39,14 @@ static inline uint32_t  //
 iconvg_private_peek_u32le(const uint8_t* p) {
   return ((uint32_t)(p[0]) << 0) | ((uint32_t)(p[1]) << 8) |
          ((uint32_t)(p[2]) << 16) | ((uint32_t)(p[3]) << 24);
+}
+
+static inline uint64_t  //
+iconvg_private_peek_u64le(const uint8_t* p) {
+  return ((uint64_t)(p[0]) << 0) | ((uint64_t)(p[1]) << 8) |
+         ((uint64_t)(p[2]) << 16) | ((uint64_t)(p[3]) << 24) |
+         ((uint64_t)(p[4]) << 32) | ((uint64_t)(p[5]) << 40) |
+         ((uint64_t)(p[6]) << 48) | ((uint64_t)(p[7]) << 56);
 }
 
 static inline void  //
@@ -96,25 +100,6 @@ typedef struct iconvg_private_decoder_struct {
 extern const uint8_t iconvg_private_one_byte_colors[512];
 extern const iconvg_palette iconvg_private_default_palette;
 
-static inline void  //
-iconvg_private_set_one_byte_color(uint8_t* dst,
-                                  const iconvg_palette* custom_palette,
-                                  const iconvg_palette* creg,
-                                  uint8_t u) {
-  if (u < 0x80) {
-    iconvg_private_poke_u32le(
-        dst, iconvg_private_peek_u32le(
-                 &iconvg_private_one_byte_colors[4 * ((size_t)u)]));
-  } else if (u < 0xC0) {
-    iconvg_private_poke_u32le(
-        dst,
-        iconvg_private_peek_u32le(&custom_palette->colors[u & 0x3F].rgba[0]));
-  } else {
-    iconvg_private_poke_u32le(
-        dst, iconvg_private_peek_u32le(&creg->colors[u & 0x3F].rgba[0]));
-  }
-}
-
 // ----
 
 static inline int  //
@@ -134,10 +119,9 @@ iconvg_private_last_color_that_isnt_opaque_black(
 struct iconvg_paint_struct {
   iconvg_rectangle_f32 viewbox;
   int64_t height_in_pixels;
-  uint8_t paint_rgba[4];
   iconvg_palette custom_palette;
-  iconvg_palette creg;
-  float nreg[64];
+
+  // iconvg_private_initialize_remaining_paint_fields sets the fields below.
 
   // Scale and bias convert between dst coordinates (what this library calls
   // user or canvas coordinate space) and src coordinates (what this library
@@ -163,6 +147,29 @@ struct iconvg_paint_struct {
   double d2s_bias_x;
   double d2s_scale_y;
   double d2s_bias_y;
+
+  uint8_t sel;
+  bool begun_drawing;
+  bool begun_path;
+
+  uint8_t paint_type;
+  uint8_t num_stops;
+  uint8_t spread;
+  uint8_t which_regs;
+
+  union {
+    // coords[0] are the current x and y coordinates. coords[1..4] are the x
+    // and y coordinates of the path op arguments. That final space (6 floats)
+    // is also used to hold gradient transformation matrices.
+    float coords[4][2];
+    struct {
+      float current_x;
+      float current_y;
+      float transform[6];
+    };
+  };
+
+  uint64_t regs[64];
 };
 
 // ----

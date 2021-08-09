@@ -28,7 +28,7 @@ iconvg_private_debug_canvas__begin_decode(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->begin_decode)(wrapped, dst_rect);
 }
@@ -51,7 +51,7 @@ iconvg_private_debug_canvas__end_decode(iconvg_canvas* c,
     return err_msg;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->end_decode)(wrapped, err_msg, num_bytes_consumed,
                                         num_bytes_remaining);
@@ -68,7 +68,7 @@ iconvg_private_debug_canvas__begin_drawing(iconvg_canvas* c) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->begin_drawing)(wrapped);
 }
@@ -118,7 +118,7 @@ iconvg_private_debug_canvas__end_drawing(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->end_drawing)(wrapped, p);
 }
@@ -135,7 +135,7 @@ iconvg_private_debug_canvas__begin_path(iconvg_canvas* c, float x0, float y0) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->begin_path)(wrapped, x0, y0);
 }
@@ -151,7 +151,7 @@ iconvg_private_debug_canvas__end_path(iconvg_canvas* c) {
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->end_path)(wrapped);
 }
@@ -170,7 +170,7 @@ iconvg_private_debug_canvas__path_line_to(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->path_line_to)(wrapped, x1, y1);
 }
@@ -191,7 +191,7 @@ iconvg_private_debug_canvas__path_quad_to(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->path_quad_to)(wrapped, x1, y1, x2, y2);
 }
@@ -214,7 +214,7 @@ iconvg_private_debug_canvas__path_cube_to(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->path_cube_to)(wrapped, x1, y1, x2, y2, x3, y3);
 }
@@ -233,7 +233,7 @@ iconvg_private_debug_canvas__on_metadata_viewbox(iconvg_canvas* c,
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->on_metadata_viewbox)(wrapped, viewbox);
 }
@@ -271,7 +271,7 @@ iconvg_private_debug_canvas__on_metadata_suggested_palette(
     return NULL;
   } else if (iconvg_private_canvas_sizeof_vtable(wrapped) <
              sizeof(iconvg_canvas_vtable)) {
-    return iconvg_error_unsupported_vtable;
+    return iconvg_error_invalid_vtable;
   }
   return (*wrapped->vtable->on_metadata_suggested_palette)(wrapped,
                                                            suggested_palette);

@@ -32,6 +32,9 @@ func main() {
 
 func main1() error {
 	fmt.Printf("const uint8_t iconvg_private_one_byte_colors[512] = {\n")
+	fmt.Printf("    0x00, 0x00, 0x00, 0x00,  //\n")
+	fmt.Printf("    0x80, 0x80, 0x80, 0x80,  //\n")
+	fmt.Printf("    0xC0, 0xC0, 0xC0, 0xC0,  //\n")
 	for r := 0; r < 5; r++ {
 		for g := 0; g < 5; g++ {
 			for b := 0; b < 5; b++ {
@@ -40,9 +43,6 @@ func main1() error {
 			}
 		}
 	}
-	fmt.Printf("    0xC0, 0xC0, 0xC0, 0xC0,  //\n")
-	fmt.Printf("    0x80, 0x80, 0x80, 0x80,  //\n")
-	fmt.Printf("    0x00, 0x00, 0x00, 0x00,  //\n")
 	fmt.Printf("};\n\n")
 
 	fmt.Printf("const iconvg_palette iconvg_private_default_palette = {{\n")
