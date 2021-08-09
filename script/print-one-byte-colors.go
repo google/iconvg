@@ -31,15 +31,16 @@ func main() {
 }
 
 func main1() error {
-	fmt.Printf("const uint8_t iconvg_private_one_byte_colors[512] = {\n")
-	fmt.Printf("    0x00, 0x00, 0x00, 0x00,  //\n")
-	fmt.Printf("    0x80, 0x80, 0x80, 0x80,  //\n")
-	fmt.Printf("    0xC0, 0xC0, 0xC0, 0xC0,  //\n")
+	fmt.Printf("// iconvg_private_one_byte_colors holds the first 128 one-byte colors, in\n")
+	fmt.Printf("// 0xAABBGGRR alpha-premultiplied format.\n")
+	fmt.Printf("const uint32_t iconvg_private_one_byte_colors[128] = {\n")
+	fmt.Printf("    0x00000000,  //\n")
+	fmt.Printf("    0x80808080,  //\n")
+	fmt.Printf("    0xC0C0C0C0,  //\n")
 	for r := 0; r < 5; r++ {
 		for g := 0; g < 5; g++ {
 			for b := 0; b < 5; b++ {
-				fmt.Printf("    0x%02X, 0x%02X, 0x%02X, 0xFF,  //\n",
-					table[r], table[g], table[b])
+				fmt.Printf("    0xFF%02X%02X%02X,  //\n", table[b], table[g], table[r])
 			}
 		}
 	}

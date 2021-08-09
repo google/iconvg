@@ -79,8 +79,7 @@ iconvg_private_paint__one_byte_color(const iconvg_paint* self,
                                      uint32_t i,
                                      uint32_t u) {
   if (u < 0x80) {
-    return iconvg_private_peek_u32le(
-        &iconvg_private_one_byte_colors[4 * ((size_t)u)]);
+    return iconvg_private_one_byte_colors[u];
   } else if (u < 0xC0) {
     return iconvg_private_peek_u32le(
         &self->custom_palette.colors[u & 63].rgba[0]);

@@ -97,7 +97,7 @@ typedef struct iconvg_private_decoder_struct {
 
 // ----
 
-extern const uint8_t iconvg_private_one_byte_colors[512];
+extern const uint32_t iconvg_private_one_byte_colors[128];
 extern const iconvg_palette iconvg_private_default_palette;
 
 // ----
