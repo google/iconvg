@@ -1870,50 +1870,39 @@ iconvg_private_decoder__skip_to_the_end(iconvg_private_decoder* self) {
 // ----
 
 static bool  //
-iconvg_private_decoder__decode_coordinate_number(iconvg_private_decoder* self,
-                                                 float* dst) {
-  if (self->len >= 1) {
+iconvg_private_decoder__decode_coordinates(iconvg_private_decoder* self,
+                                           float* dst_ptr,
+                                           size_t dst_len) {
+  for (; dst_len > 0; dst_len--) {
+    if (self->len == 0) {
+      return false;
+    }
     uint8_t v = self->ptr[0];
     if ((v & 0x01) != 0) {  // 1-byte encoding.
       int32_t i = (int32_t)(v >> 1);
-      *dst = ((float)(i - 64));
+      *dst_ptr++ = ((float)(i - 64));
       self->ptr += 1;
       self->len -= 1;
-      return true;
 
     } else if ((v & 0x02) != 0) {  // 2-byte encoding.
-      if (self->len >= 2) {
-        int32_t i = (int32_t)(iconvg_private_peek_u16le(self->ptr) >> 2);
-        *dst = ((float)(i - (128 * 64))) / 64.0f;
-        self->ptr += 2;
-        self->len -= 2;
-        return true;
+      if (self->len < 2) {
+        return false;
       }
+      int32_t i = (int32_t)(iconvg_private_peek_u16le(self->ptr) >> 2);
+      *dst_ptr++ = ((float)(i - (128 * 64))) / 64.0f;
+      self->ptr += 2;
+      self->len -= 2;
 
     } else {  // 4-byte encoding.
-      if (self->len >= 4) {
-        // TODO: reject NaNs?
-        *dst = iconvg_private_reinterpret_from_u32_to_f32(
-            iconvg_private_peek_u32le(self->ptr));
-        self->ptr += 4;
-        self->len -= 4;
-        return true;
+      if (self->len < 4) {
+        return false;
       }
+      // TODO: reject NaNs?
+      *dst_ptr++ = iconvg_private_reinterpret_from_u32_to_f32(
+          iconvg_private_peek_u32le(self->ptr));
+      self->ptr += 4;
+      self->len -= 4;
     }
-  }
-  return false;
-}
-
-static bool  //
-iconvg_private_decoder__decode_coordinate_pairs(iconvg_private_decoder* self,
-                                                float dst[2],
-                                                size_t n) {
-  for (; n > 0; n--) {
-    if (!iconvg_private_decoder__decode_coordinate_number(self, &dst[0]) ||
-        !iconvg_private_decoder__decode_coordinate_number(self, &dst[1])) {
-      return false;
-    }
-    dst += 2;
   }
   return true;
 }
@@ -1921,46 +1910,46 @@ iconvg_private_decoder__decode_coordinate_pairs(iconvg_private_decoder* self,
 static bool  //
 iconvg_private_decoder__decode_natural_number(iconvg_private_decoder* self,
                                               uint32_t* dst) {
-  if (self->len >= 1) {
-    uint8_t v = self->ptr[0];
-    if ((v & 0x01) != 0) {  // 1-byte encoding.
-      *dst = v >> 1;
-      self->ptr += 1;
-      self->len -= 1;
-      return true;
-
-    } else if ((v & 0x02) != 0) {  // 2-byte encoding.
-      if (self->len >= 2) {
-        *dst = iconvg_private_peek_u16le(self->ptr) >> 2;
-        self->ptr += 2;
-        self->len -= 2;
-        return true;
-      }
-
-    } else {  // 4-byte encoding.
-      if (self->len >= 4) {
-        *dst = iconvg_private_peek_u32le(self->ptr) >> 2;
-        self->ptr += 4;
-        self->len -= 4;
-        return true;
-      }
-    }
+  if (self->len == 0) {
+    return false;
   }
-  return false;
+  uint8_t v = self->ptr[0];
+  if ((v & 0x01) != 0) {  // 1-byte encoding.
+    *dst = v >> 1;
+    self->ptr += 1;
+    self->len -= 1;
+
+  } else if ((v & 0x02) != 0) {  // 2-byte encoding.
+    if (self->len < 2) {
+      return false;
+    }
+    *dst = iconvg_private_peek_u16le(self->ptr) >> 2;
+    self->ptr += 2;
+    self->len -= 2;
+
+  } else {  // 4-byte encoding.
+    if (self->len < 4) {
+      return false;
+    }
+    *dst = iconvg_private_peek_u32le(self->ptr) >> 2;
+    self->ptr += 4;
+    self->len -= 4;
+  }
+  return true;
 }
 
 static bool  //
 iconvg_private_decoder__decode_float32(iconvg_private_decoder* self,
                                        float* dst) {
-  if (self->len >= 4) {
-    // TODO: reject NaNs?
-    *dst = iconvg_private_reinterpret_from_u32_to_f32(
-        iconvg_private_peek_u32le(self->ptr));
-    self->ptr += 4;
-    self->len -= 4;
-    return true;
+  if (self->len < 4) {
+    return false;
   }
-  return false;
+  // TODO: reject NaNs?
+  *dst = iconvg_private_reinterpret_from_u32_to_f32(
+      iconvg_private_peek_u32le(self->ptr));
+  self->ptr += 4;
+  self->len -= 4;
+  return true;
 }
 
 // ----
@@ -1983,7 +1972,7 @@ static bool  //
 iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
                                                 iconvg_rectangle_f32* dst) {
   float a[2][2];
-  if (iconvg_private_decoder__decode_coordinate_pairs(self, a[0], 2) &&
+  if (iconvg_private_decoder__decode_coordinates(self, a[0], 4) &&
       (-INFINITY < a[0][0]) &&  //
       (a[0][0] <= a[1][0]) &&   //
       (a[1][0] < +INFINITY) &&  //
@@ -2075,7 +2064,7 @@ iconvg_private_expand_ellipse_parallelogram(iconvg_canvas* c,
                                             iconvg_paint* p,
                                             uint8_t opcode) {
   // Decode the two explicit coordinate pairs.
-  if (!iconvg_private_decoder__decode_coordinate_pairs(d, p->coords[1], 2)) {
+  if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1], 4)) {
     return iconvg_error_bad_coordinate;
   }
 
@@ -2171,7 +2160,7 @@ iconvg_private_expand_jump(iconvg_private_decoder* d,
 
   } else if (opcode == 0x3A) {  // Jump Level-of-Detail.
     float lod[2] = {0};
-    if (!iconvg_private_decoder__decode_coordinate_pairs(d, lod, 1)) {
+    if (!iconvg_private_decoder__decode_coordinates(d, lod, 2)) {
       return iconvg_error_bad_number;
     }
     double h = p->height_in_pixels;
@@ -2320,8 +2309,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
         }
 
         if (opcode == 0x35) {
-          if (!iconvg_private_decoder__decode_coordinate_pairs(d, p->coords[0],
-                                                               1)) {
+          if (!iconvg_private_decoder__decode_coordinates(d, p->coords[0], 2)) {
             return iconvg_error_bad_coordinate;
           }
           if (p->begun_path) {
@@ -2361,8 +2349,8 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
         switch (opcode >> 4) {
           case 0:
             for (; num_reps > 0; num_reps--) {
-              if (!iconvg_private_decoder__decode_coordinate_pairs(
-                      d, p->coords[1], 1)) {
+              if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1],
+                                                              2)) {
                 return iconvg_error_bad_coordinate;
               }
               ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(
@@ -2376,8 +2364,8 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
 
           case 1:
             for (; num_reps > 0; num_reps--) {
-              if (!iconvg_private_decoder__decode_coordinate_pairs(
-                      d, p->coords[1], 2)) {
+              if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1],
+                                                              4)) {
                 return iconvg_error_bad_coordinate;
               }
               ICONVG_PRIVATE_TRY((*c->vtable->path_quad_to)(
@@ -2393,8 +2381,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
         }
 
         for (; num_reps > 0; num_reps--) {
-          if (!iconvg_private_decoder__decode_coordinate_pairs(d, p->coords[1],
-                                                               3)) {
+          if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1], 6)) {
             return iconvg_error_bad_coordinate;
           }
           ICONVG_PRIVATE_TRY((*c->vtable->path_cube_to)(
@@ -2533,8 +2520,7 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
         d->ptr += num_bytes;
         d->len -= num_bytes;
         if (opcode < 0xE0) {
-          if (!iconvg_private_decoder__decode_coordinate_pairs(d, p->coords[1],
-                                                               1)) {
+          if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1], 2)) {
             return iconvg_error_bad_coordinate;
           }
           ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(
