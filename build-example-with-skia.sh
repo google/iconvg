@@ -43,7 +43,7 @@ ${CC:-gcc} -O3 -Wall -std=c99 \
     -I $SKIA_LIB_DIR/../.. \
     example/iconvg-to-png/iconvg-to-png.c \
     $SKIA_LIB_DIR/libskia.* \
-    -lm -lpng \
+    -lpng \
     -o gen/bin/iconvg-to-png-with-skia \
     -Wl,-rpath \
     -Wl,$SKIA_LIB_DIR
@@ -57,7 +57,7 @@ ${CC:-gcc} -O3 -Wall -std=c99 \
     -I $SKIA_LIB_DIR/../.. \
     example/iconvg-viewer/iconvg-viewer.c \
     $SKIA_LIB_DIR/libskia.* \
-    -lm -lxcb -lxcb-image \
+    -lxcb -lxcb-image \
     -o gen/bin/iconvg-viewer-with-skia \
     -Wl,-rpath \
     -Wl,$SKIA_LIB_DIR

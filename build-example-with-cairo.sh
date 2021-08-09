@@ -32,7 +32,7 @@ echo "Building gen/bin/iconvg-to-png-with-cairo"
 ${CC:-gcc} -O3 -Wall -std=c99 \
     -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
     example/iconvg-to-png/iconvg-to-png.c \
-    -lcairo -lm -lpng \
+    -lcairo -lpng \
     -o gen/bin/iconvg-to-png-with-cairo
 
 # ----
@@ -42,5 +42,5 @@ echo "Building gen/bin/iconvg-viewer-with-cairo"
 ${CC:-gcc} -O3 -Wall -std=c99 \
     -DICONVG_CONFIG__ENABLE_CAIRO_BACKEND \
     example/iconvg-viewer/iconvg-viewer.c \
-    -lcairo -lm -lxcb -lxcb-image \
+    -lcairo -lxcb -lxcb-image \
     -o gen/bin/iconvg-viewer-with-cairo
