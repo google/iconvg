@@ -1982,16 +1982,21 @@ iconvg_private_decoder__decode_magic_identifier(iconvg_private_decoder* self) {
 static bool  //
 iconvg_private_decoder__decode_metadata_viewbox(iconvg_private_decoder* self,
                                                 iconvg_rectangle_f32* dst) {
-  return iconvg_private_decoder__decode_coordinate_number(self, &dst->min_x) &&
-         iconvg_private_decoder__decode_coordinate_number(self, &dst->min_y) &&
-         iconvg_private_decoder__decode_coordinate_number(self, &dst->max_x) &&
-         iconvg_private_decoder__decode_coordinate_number(self, &dst->max_y) &&
-         (-INFINITY < dst->min_x) &&    //
-         (dst->min_x <= dst->max_x) &&  //
-         (dst->max_x < +INFINITY) &&    //
-         (-INFINITY < dst->min_y) &&    //
-         (dst->min_y <= dst->max_y) &&  //
-         (dst->max_y < +INFINITY);
+  float a[2][2];
+  if (iconvg_private_decoder__decode_coordinate_pairs(self, a[0], 2) &&
+      (-INFINITY < a[0][0]) &&  //
+      (a[0][0] <= a[1][0]) &&   //
+      (a[1][0] < +INFINITY) &&  //
+      (-INFINITY < a[0][1]) &&  //
+      (a[0][1] <= a[1][1]) &&   //
+      (a[1][1] < +INFINITY)) {
+    dst->min_x = a[0][0];
+    dst->min_y = a[0][1];
+    dst->max_x = a[1][0];
+    dst->max_y = a[1][1];
+    return true;
+  }
+  return false;
 }
 
 static bool  //
