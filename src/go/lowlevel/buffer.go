@@ -57,7 +57,11 @@ func (b buffer) decodeCoordinate() (f float32, n int) {
 	case 2:
 		return float32(int32(u)-64*128) / 64, n
 	default:
-		return math.Float32frombits(u << 2), n
+		f = math.Float32frombits(u << 2)
+		if f != f { // Reject NaN.
+			return 0, 0
+		}
+		return f, n
 	}
 }
 
@@ -66,7 +70,11 @@ func (b buffer) decodeFloat32() (f float32, n int) {
 		return 0, 0
 	}
 	u := uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
-	return math.Float32frombits(u), 4
+	f = math.Float32frombits(u)
+	if f != f { // Reject NaN.
+		return 0, 0
+	}
+	return f, 4
 }
 
 func (b *buffer) encodeNatural(u uint32) {

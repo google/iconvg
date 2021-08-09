@@ -74,9 +74,12 @@ iconvg_private_decoder__decode_coordinates(iconvg_private_decoder* self,
       if (self->len < 4) {
         return false;
       }
-      // TODO: reject NaNs?
-      *dst_ptr++ = iconvg_private_reinterpret_from_u32_to_f32(
+      float f = iconvg_private_reinterpret_from_u32_to_f32(
           iconvg_private_peek_u32le(self->ptr));
+      if (f != f) {  // Reject NaN.
+        return false;
+      }
+      *dst_ptr++ = f;
       self->ptr += 4;
       self->len -= 4;
     }
@@ -121,9 +124,12 @@ iconvg_private_decoder__decode_float32(iconvg_private_decoder* self,
   if (self->len < 4) {
     return false;
   }
-  // TODO: reject NaNs?
-  *dst = iconvg_private_reinterpret_from_u32_to_f32(
+  float f = iconvg_private_reinterpret_from_u32_to_f32(
       iconvg_private_peek_u32le(self->ptr));
+  if (f != f) {  // Reject NaN.
+    return false;
+  }
+  *dst = f;
   self->ptr += 4;
   self->len -= 4;
   return true;
