@@ -37,9 +37,9 @@ func main1() error {
 	fmt.Printf("    0x00000000,  //\n")
 	fmt.Printf("    0x80808080,  //\n")
 	fmt.Printf("    0xC0C0C0C0,  //\n")
-	for r := 0; r < 5; r++ {
+	for b := 0; b < 5; b++ {
 		for g := 0; g < 5; g++ {
-			for b := 0; b < 5; b++ {
+			for r := 0; r < 5; r++ {
 				fmt.Printf("    0xFF%02X%02X%02X,  //\n", table[b], table[g], table[r])
 			}
 		}

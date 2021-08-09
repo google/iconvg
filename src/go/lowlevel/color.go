@@ -121,11 +121,11 @@ func decodeColor1(x byte) Color {
 		return RGBAColor(color.RGBA{0xc0, 0xc0, 0xc0, 0xc0})
 	}
 	x -= 3
-	blue := dc1Table[x%5]
-	x = x / 5
+	red := dc1Table[x%5]
+	x /= 5
 	green := dc1Table[x%5]
-	x = x / 5
-	red := dc1Table[x]
+	x /= 5
+	blue := dc1Table[x]
 	return RGBAColor(color.RGBA{red, green, blue, 0xff})
 }
 
