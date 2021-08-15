@@ -42,9 +42,9 @@ func Disassemble(w io.Writer, src []byte) error {
 }
 
 func disassemble(w io.Writer, src []byte) error {
+	var buf [14]byte
 	p := func(b []byte, format string, args ...interface{}) {
 		const hex = "0123456789abcdef"
-		var buf [14]byte
 		for i := range buf {
 			buf[i] = ' '
 		}
