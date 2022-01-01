@@ -21,8 +21,8 @@ import (
 )
 
 var midDescriptions = [...]string{
-	midViewBox:          "viewBox",
-	midSuggestedPalette: "suggested palette",
+	midViewBox:          "ViewBox",
+	midSuggestedPalette: "Suggested Palette",
 }
 
 // Destination handles the actions decoded from an IconVG graphic's byte code.

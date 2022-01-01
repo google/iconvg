@@ -1,7 +1,7 @@
 8a 49 56 47   IconVG Magic Identifier
 03            Number of metadata chunks: 1
 0b            Metadata chunk length: 5
-11            Metadata Identifier: 8 (viewBox)
+11            Metadata Identifier: 8 (ViewBox)
 41                  -32
 51                  -24
 c1                  +32
