@@ -5,9 +5,6 @@ glyphs and emoji.
 
 **WARNING: THIS FORMAT IS EXPERIMENTAL AND SUBJECT TO INCOMPATIBLE CHANGES.**
 
-Specifically, we are considering [**substantial changes to the file
-format**](https://github.com/google/iconvg/issues/4) to happen in mid-2021.
-
 It is similar in concept to SVG (Scalable Vector Graphics) but much simpler.
 Compared to [SVG Tiny](https://www.w3.org/TR/SVGTiny12/), which isn't actually
 tiny, it does not have features for text, multimedia, interactivity, linking,
@@ -34,10 +31,10 @@ not expected to be perceptible to the naked eye.
 
 ![Cowbell image](./test/data/cowbell.png)
 
-- `cowbell.png` is 18555 bytes (256 × 256 pixels)
-- `cowbell.svg` is  4506 bytes
-- `cowbell.ivg` is  1017 bytes (see also its
-  [disassembly](./test/data/cowbell.ivg.disassembly))
+- `cowbell.png`    is 18555 bytes (256 × 256 pixels)
+- `cowbell.svg`    is  4506 bytes
+- `cowbell.iconvg` is  1012 bytes (see also its
+  [disassembly](./test/data/cowbell.iconvg.disassembly))
 
 The [test/data](./test/data) directory holds these files and other examples.
 
@@ -45,9 +42,9 @@ The [test/data](./test/data) directory holds these files and other examples.
 ## File Format
 
 - [IconVG Specification](spec/iconvg-spec.md)
-- Magic number: `0x89 0x49 0x56 0x47`, which is `"\x89IVG"`.
-- Suggested file extension: `.ivg`
-- Suggested MIME type: `image/ivg`
+- Magic number: `0x8A 0x49 0x56 0x47`, which is `"\x8aIVG"`.
+- Suggested file extension: `.iconvg`
+- Suggested MIME type: `image/x-iconvg`
 
 
 ## Implementations
@@ -55,13 +52,15 @@ The [test/data](./test/data) directory holds these files and other examples.
 This repository contains:
 
 - a decoder [written in C](./release/c)
-- a decoder [written in Dart](./src/dart)
+- a decoder [written in Dart](./src/dart), albeit for an [older (obsolete)
+  version of the file format](https://github.com/google/iconvg/issues/4)
 - a low-level decoder [written in Go](./src/go). Low-level means that it
   outputs numbers (vector coordinates), not pixels.
 
 The [original Go IconVG
 package](https://pkg.go.dev/golang.org/x/exp/shiny/iconvg) also implements a
-decoder and encoder.
+decoder and encoder, albeit for an [older (obsolete) version of the file
+format](https://github.com/google/iconvg/issues/4).
 
 
 ## Disclaimer
@@ -72,4 +71,4 @@ owned by Google.
 
 ---
 
-Updated on June 2021.
+Updated on January 2022.
