@@ -554,7 +554,7 @@ op will be an implicit Return), but invalid to jump past either.
   followed by a natural number `FeaturesNeeded`. The jump is taken unless the
   rasterizer provides all of those features. See "Feature Detection" below.
 - Opcode `0x3A` is a Level Of Detail Jump (LODJump). The `JumpCount` is
-  followed by two floating point numbers, `LOD0` and `LOD1`. The jump is taken
+  followed by two coordinate numbers, `LOD0` and `LOD1`. The jump is taken
   unless the rasterization's height in pixels `H` satisfies both `(LOD0 <= H)`
   and `(H < LOD1)`.
 
