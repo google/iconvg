@@ -669,11 +669,11 @@ Nf]`, discussed below.
 - Opcodes `[0x80 ..= 0x8F]` fill with a flat (uniform) color, resolving
   `REGS[SEL + LOW4]`.
 - Opcodes `[0x90 ..= 0x9F]` fill with a linear gradient. It is followed by a
-  Gradient Configuration byte and then three coordinate numbers `Na`, `Nb` and
-  `Nc`. The `Nd`, `Ne` and `Nf` numbers are all set to zero.
+  Gradient Configuration byte and then three floating point numbers `Na`, `Nb`
+  and `Nc`. The `Nd`, `Ne` and `Nf` numbers are all set to zero.
 - Opcodes `[0xA0 ..= 0xAF]` fill with a radial gradient. It is followed by a
-  Gradient Configuration byte and then six coordinate numbers `Na`, `Nb`, `Nc`,
-  `Nd`, `Ne` and `Nf`.
+  Gradient Configuration byte and then six floating point numbers `Na`, `Nb`,
+  `Nc`, `Nd`, `Ne` and `Nf`.
 
 The Gradient Configuration's low 6 bits gives a number in the range `[0 ..=
 62]`, with 63 being invalid. Adding 2 gives `NSTOPS`, the number of gradient
