@@ -433,7 +433,7 @@ func decodeBytecode(dst Destination, p printer, src buffer) (retErr error) {
 				}
 
 			case 1, 2:
-				if len(src) < 2 {
+				if (len(src) < 2) || ((src[1] & 63) == 63) {
 					return errInvalidColor
 				}
 				grad := "linear"

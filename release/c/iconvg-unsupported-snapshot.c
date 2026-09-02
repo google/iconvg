@@ -3334,12 +3334,12 @@ iconvg_private_skia_canvas__end_drawing(iconvg_canvas* c,
   // instead, for IconVG's ICONVG_GRADIENT_SPREAD__NONE, adding a transparent
   // black gradient stop at both ends.
   //
-  // 1010 equals ((63 * 16) + 2). 63 is the maximum (inclusive) number of
+  // 1026 equals ((64 * 16) + 2). 64 is the maximum (inclusive) number of
   // gradient stops. iconvg_private_skia_set_gradient_stops can expand each
   // IconVG stop to up to 16 Skia stops. There's also 2 extra stops if we
   // use the ICONVG_GRADIENT_SPREAD__NONE workaround.
-  sk_color_t gradient_colors[1010];
-  float gradient_offsets[1010];
+  sk_color_t gradient_colors[1026];
+  float gradient_offsets[1026];
   sk_color_t* gcol = &gradient_colors[0];
   float* goff = &gradient_offsets[0];
   iconvg_gradient_spread gradient_spread = iconvg_paint__gradient_spread(p);
