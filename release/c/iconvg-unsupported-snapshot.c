@@ -2529,6 +2529,17 @@ iconvg_private_execute_bytecode(iconvg_canvas* c,
           if (!iconvg_private_decoder__decode_coordinates(d, p->coords[1], 2)) {
             return iconvg_error_bad_coordinate;
           }
+          if (!p->begun_drawing) {
+            p->begun_drawing = true;
+            ICONVG_PRIVATE_TRY((*c->vtable->begin_drawing)(c));
+          }
+          if (!p->begun_path) {
+            p->begun_path = true;
+            ICONVG_PRIVATE_TRY((*c->vtable->begin_path)(
+                c,                                                   //
+                (p->coords[0][0] * p->s2d_scale_x) + p->s2d_bias_x,  //
+                (p->coords[0][1] * p->s2d_scale_y) + p->s2d_bias_y));
+          }
           ICONVG_PRIVATE_TRY((*c->vtable->path_line_to)(
               c,                                                   //
               (p->coords[1][0] * p->s2d_scale_x) + p->s2d_bias_x,  //
