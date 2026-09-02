@@ -414,6 +414,32 @@ Some op descriptions refer to a `LOW4` value. This is the low four bits of the
 opcode, in the range `[0 ..= 15]`.
 
 
+### Opcode Table
+
+    ....   0x0 0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9 0xA 0xB 0xC 0xD 0xE 0xF
+    ....  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    0x00  |LT0 LT1 LT2 LT3 LT4 LT5 LT6 LT7 LT8 LT9 LTA LTB LTC LTD LTE LTF|  Line To
+    0x10  |QT0 QT1 QT2 QT3 QT4 QT5 QT6 QT7 QT8 QT9 QTA QTB QTC QTD QTE QTF|  Quad To
+    0x20  |CT0 CT1 CT2 CT3 CT4 CT5 CT6 CT7 CT8 CT9 CTA CTB CTC CTD CTE CTF|  Cube To
+    0x30  |EL0 EL1 EL2 EL3 PAR CPM SEL NOP JUN JFD JLD RET CAU CAT Z3E Z3F|  Various
+    ....  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    0x40  |SL0 SL1 SL2 SL3 SL4 SL5 SL6 SL7 SL8 SL9 SLA SLB SLC SLD SLE SLF|  Set Low
+    0x50  |SH0 SH1 SH2 SH3 SH4 SH5 SH6 SH7 SH8 SH9 SHA SHB SHC SHD SHE SHF|  Set High
+    0x60  |SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SBA SBB SBC SBD SBE SBF|  Set Both
+    0x70  |SM0 SM1 SM2 SM3 SM4 SM5 SM6 SM7 SM8 SM9 SMA SMB SMC SMD SME SMF|  Set Multiple
+    ....  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    0x80  |FF0 FF1 FF2 FF3 FF4 FF5 FF6 FF7 FF8 FF9 FFA FFB FFC FFD FFE FFF|  Fill Flat
+    0x90  |FL0 FL1 FL2 FL3 FL4 FL5 FL6 FL7 FL8 FL9 FLA FLB FLC FLD FLE FLF|  Fill Linear
+    0xA0  |FR0 FR1 FR2 FR3 FR4 FR5 FR6 FR7 FR8 FR9 FRA FRB FRC FRD FRE FRF|  Fill Radial
+    0xB0  |ZB0 ZB1 ZB2 ZB3 ZB4 ZB5 ZB6 ZB7 ZB8 ZB9 ZBA ZBB ZBC ZBD ZBE ZBF|  Reserved B (Fill Flat)
+    ....  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    0xC0  |ZC0 ZC1 ZC2 ZC3 ZC4 ZC5 ZC6 ZC7 ZC8 ZC9 ZCA ZCB ZCC ZCD ZCE ZCF|  Reserved C (Line To)
+    0xD0  |ZD0 ZD1 ZD2 ZD3 ZD4 ZD5 ZD6 ZD7 ZD8 ZD9 ZDA ZDB ZDC ZDD ZDE ZDF|  Reserved D (Line To)
+    0xE0  |ZE0 ZE1 ZE2 ZE3 ZE4 ZE5 ZE6 ZE7 ZE8 ZE9 ZEA ZEB ZEC ZED ZEE ZEF|  Reserved E (NOP)
+    0xF0  |ZF0 ZF1 ZF2 ZF3 ZF4 ZF5 ZF6 ZF7 ZF8 ZF9 ZFA ZFB ZFC ZFD ZFE ZFF|  Reserved F (NOP)
+    ....  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+
 ## Geometry Ops
 
 The VM state includes a Current Path, open at the Pen Position (also called
@@ -549,16 +575,16 @@ move the PC into the middle of a multi-byte op.
 It is valid to jump to the EOB or the end of the IconVG file exactly (the next
 op will be an implicit Return), but invalid to jump past either.
 
-- Opcode `0x38` is an Unconditional Jump. The jump is always taken.
-- Opcode `0x39` is a Feature Detection Jump (FDJump). The `JumpCount` is
+- Opcode `0x38` is a JUN (Jump, Unconditional). The jump is always taken.
+- Opcode `0x39` is a JFD (Jump, Feature Detection). The `JumpCount` is
   followed by a natural number `FeaturesNeeded`. The jump is taken unless the
   rasterizer provides all of those features. See "Feature Detection" below.
-- Opcode `0x3A` is a Level Of Detail Jump (LODJump). The `JumpCount` is
+- Opcode `0x3A` is a JLD (Jump, Level of Detail). The `JumpCount` is
   followed by two coordinate numbers, `LOD0` and `LOD1`. The jump is taken
   unless the rasterization's height in pixels `H` satisfies both `(LOD0 <= H)`
   and `(H < LOD1)`.
 
-The LODJump op allows an IconVG file to provide a simpler version for small
+The JLD op allows an IconVG file to provide a simpler version for small
 rasterizations (e.g. below 32 pixels) and a more complex version for large
 rasterizations (e.g. 32 and above pixels).
 
@@ -566,15 +592,15 @@ rasterizations (e.g. 32 and above pixels).
 ### Feature Detection
 
 Future IconVG versions may add additional features and provide semantics to
-previously reserved opcodes. The FDJump mechanism allows newer IconVG files to
+previously reserved opcodes. The JFD mechanism allows newer IconVG files to
 instruct older or limited IconVG rasterizers to skip over the newer ops that
 they do not implement and possibly jump to a fallback op sequence instead.
 
 Rasterizers provide an ambient, read-only `FeaturesImplemented` `uint32` value,
 which may be zero. IconVG reserves bits of that overall value for different
-features and an FDJump op takes the jump unless the bitwise-and of the op's
+features and an JFD op takes the jump unless the bitwise-and of the op's
 `FeaturesNeeded` and the rasterizer's `FeaturesImplemented` values equals
-`FeaturesNeeded`. For example, an FDJump needing `0x0000_0103` meeting a
+`FeaturesNeeded`. For example, an JFD needing `0x0000_0103` meeting a
 rasterizer implementing `0x0000_00F7` would take the jump as the `0x0000_0100`
 feature bit was unsatisfied.
 
@@ -630,7 +656,7 @@ multi-byte op. Op decoding starts afresh when executing the callee bytecode.
 
 Segment Types other than `0x00` are reserved and are invalid to Call in this
 version (there is no fallback behavior). Future-versioned IconVG files that use
-them should guard them with FDJump ops.
+them should guard them with JFD ops.
 
 
 ## Register Ops
@@ -755,7 +781,7 @@ file. The [test/data](/test/data) directory holds other gradient examples.
 
 Future IconVG versions may redefine these ops' behavior but not how many bytes
 they occupy. This version defines fallback behavior, so it is not necessary to
-guard them with FDJump ops.
+guard them with JFD ops.
 
 - Opcodes `[0x3E ..= 0x3F]` are followed by Extra Data. The fallback behavior
   is a NOP.
